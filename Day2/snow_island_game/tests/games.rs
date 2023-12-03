@@ -1,4 +1,4 @@
-use cucumber::{given, when, World};
+use cucumber::{given, when, then, World};
 
 // These `Cat` definitions would normally be inside your project's code,
 // not test code, but we create them here for the show case.
@@ -32,6 +32,12 @@ fn bag_with(world: &mut CubeGameWorld, red: u32, green: u32, blue: u32) {
 
 #[when(regex = r"^game (\d) reveals (.+)$")]
 fn the_game_reveals(world: &mut CubeGameWorld, game: u32, reveals: String){
+
+}
+
+#[then(regex = r"^the possible games are (.*) and the sum is (\d+)$")]
+fn calc_possible_games (world: &mut CubeGameWorld, possible_games: String, sum: u32){
+
 
 }
 
