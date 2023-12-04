@@ -100,24 +100,28 @@ fn count_matches(list1: &Vec<i32>, list2: &Vec<i32>) -> usize {
 }
 
 pub fn calc_total_won_scratchacrds(original_cards: &HashMap<i32, ScratchCard>) -> i32 {
-
     let mut total_won_cards = 0;
-    let mut to_process: Vec<ScratchCard> = original_cards.values().cloned().collect();
-    let mut card_counts = HashMap::new(); // Track the count of each card
+    let mut cards_to_process: HashMap<i32, i32> = original_cards.keys().map(|&k| (k, 1)).collect();
+    let mut next_batch = HashMap::new();
 
-    while let Some(card) = to_process.pop() {
-        *card_counts.entry(card.scratchcard_number).or_insert(0) += 1;
-        total_won_cards += 1;
+    while !cards_to_process.is_empty() {
+        for (&card_number, &count) in &cards_to_process {
+            if let Some(card) = original_cards.get(&card_number) {
+                total_won_cards += count;
 
-        for won_card_number in card.won_cards() {
-            if let Some(next_card) = original_cards.get(&won_card_number) {
-                to_process.push(next_card.clone());
+                for won_card_number in card.won_cards() {
+                    *next_batch.entry(won_card_number).or_insert(0) += count;
+                }
             }
         }
+
+        std::mem::swap(&mut cards_to_process, &mut next_batch);
+        next_batch.clear();
     }
 
     total_won_cards
 }
+
 
 
 
