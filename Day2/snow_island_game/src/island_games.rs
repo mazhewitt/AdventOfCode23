@@ -80,6 +80,40 @@ fn is_game_possible(mut reveals: Vec<GameReveal>, mut available_cubes: HashMap<S
     }
 }
 
+fn calculate_minimum_possible_stones(input: Vec<GameReveal>) -> Vec<GameReveal> {
+    let mut stone_counts = HashMap::new();
+
+    for reveal in input {
+        let entry = stone_counts.entry(reveal.cube_colour.clone()).or_insert(0);
+        if reveal.cube_count > *entry {
+            *entry = reveal.cube_count;
+        }
+    }
+
+    stone_counts.into_iter()
+        .map(|(cube_colour, cube_count)| GameReveal { cube_colour, cube_count })
+        .collect()
+}
+
+fn calculate_power_of_cubes(min_cubes: Vec<GameReveal>) -> u32 {
+    let mut power: u32 = 1;
+    for cube in min_cubes {
+        power *= cube.cube_count;
+    }
+    power
+}
+
+pub fn caclulate_powers_of_min_games(input: HashMap<u32, Vec<GameReveal>>) -> Vec<u32> {
+    let mut powers = Vec::new();
+    for (_, reveals) in input {
+        let min_cubes = calculate_minimum_possible_stones(reveals);
+        let power = calculate_power_of_cubes(min_cubes);
+        powers.push(power);
+    }
+    powers
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,7 +224,41 @@ mod tests {
         assert_eq!(calculate_possible_games(reveals, available_cubes), vec![1]);
     }
 
+    #[test]
+    fn min_possible_stones_test() {
+        let input = vec![
+            "3 blue".parse::<GameReveal>().unwrap(),
+            "4 red".parse::<GameReveal>().unwrap(),
+            "1 red".parse::<GameReveal>().unwrap(),
+            "2 green".parse::<GameReveal>().unwrap(),
+            "6 blue".parse::<GameReveal>().unwrap(),
+            "2 green".parse::<GameReveal>().unwrap(),
+        ];
+        let mut expected = vec![
+            "4 red".parse::<GameReveal>().unwrap(),
+            "2 green".parse::<GameReveal>().unwrap(),
+            "6 blue".parse::<GameReveal>().unwrap(),
+        ];
 
+        // Sorting the vectors for comparison
+        let mut result = calculate_minimum_possible_stones(input);
+        result.sort_by(|a, b| a.cube_colour.cmp(&b.cube_colour));
+        expected.sort_by(|a, b| a.cube_colour.cmp(&b.cube_colour));
+
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn finds_the_power_of_the_cubes(){
+        let input = vec![
+            "4 red".parse::<GameReveal>().unwrap(),
+            "2 green".parse::<GameReveal>().unwrap(),
+            "6 blue".parse::<GameReveal>().unwrap(),
+        ];
+
+        let expected: u32 = 4*2*6;
+        assert_eq!(expected, calculate_power_of_cubes(input));
+    }
 
 
 }

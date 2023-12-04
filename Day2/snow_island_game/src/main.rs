@@ -1,7 +1,7 @@
 use clap::{Arg, App};
 use std::collections::HashMap;
 use std::fs;
-use snow_island_game::island_games::{GameReveal, calculate_possible_games, parse_game_reveals};
+use snow_island_game::island_games::{GameReveal, calculate_possible_games, parse_game_reveals, caclulate_powers_of_min_games};
 
 
 fn main() {
@@ -48,7 +48,9 @@ fn main() {
     // sum possible games
     let sum_possible_games = possible_games.iter().sum::<u32>();
 
-    println!("{}", sum_possible_games);
+    let sum_min_power_games = caclulate_powers_of_min_games(games.clone());
+
+    println!("{} {}", sum_possible_games, sum_min_power_games.iter().sum::<u32>());
 }
 
 fn process_file_contents(contents: &str) -> HashMap<u32, Vec<GameReveal>> {
