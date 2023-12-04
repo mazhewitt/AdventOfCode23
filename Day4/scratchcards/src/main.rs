@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use clap::{App, Arg};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use scratchcards::scratchcard_game::ScratchCard;
+use scratchcards::scratchcard_game::{calc_total_won_scratchacrds, ScratchCard};
 fn main() {
     let matches = App::new("Scratchcard Calculator")
         .version("1.0")
@@ -19,15 +20,17 @@ fn main() {
 
     let filename = matches.value_of("file").unwrap();
 
+    let mut card_map: HashMap<i32, ScratchCard> = HashMap::new();
     if let Ok(lines) = read_lines(filename) {
         let mut total_points = 0;
         for line in lines.flatten() {
-            if let Some((winning, scratch)) = parse_line(&line) {
-                let card = ScratchCard::from_string(&scratch).unwrap();
-                total_points += card.calculate_points(&winning);
-            }
+            let card = ScratchCard::from_string(&line).unwrap();
+            total_points += card.calculate_points();
+            card_map.insert(card.scratchcard_number, card);
         }
-        println!("Total points: {}", total_points);
+        println!("number cards: {}", card_map.len());
+        let total_won_cards = calc_total_won_scratchacrds(&card_map);
+        println!("Total points: {}, Total won cards {}", total_points, total_won_cards);
     }
 }
 
@@ -39,17 +42,7 @@ fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
     Ok(io::BufReader::new(file).lines())
 }
 
-fn parse_line(line: &str) -> Option<(Vec<i32>, String)> {
-    let parts: Vec<&str> = line.split('|').collect();
-    if parts.len() != 2 {
-        return None;
-    }
-    let winning_numbers = parts[0]
-        .split_whitespace()
-        .filter_map(|n| n.parse::<i32>().ok())
-        .collect();
-    Some((winning_numbers, parts[1].trim().to_string()))
-}
+
 
 
 #[cfg(test)]
@@ -68,10 +61,7 @@ mod tests {
 
         let mut total_points = 0;
         for line in fake_file_content.lines() {
-            if let Some((winning, scratch)) = parse_line(line) {
-                let card = ScratchCard::from_string(&scratch).unwrap();
-                total_points += card.calculate_points(&winning);
-            }
+            total_points += ScratchCard::from_string(&line).unwrap().calculate_points();
         }
 
         assert_eq!(total_points, 13, "Total points should be 13.");

@@ -114,6 +114,9 @@ pub fn caclulate_powers_of_min_games(input: HashMap<u32, Vec<GameReveal>>) -> Ve
 }
 
 
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,16 +252,18 @@ mod tests {
     }
 
     #[test]
-    fn finds_the_power_of_the_cubes(){
+    fn finds_the_power_of_the_cubes() {
         let input = vec![
             "4 red".parse::<GameReveal>().unwrap(),
             "2 green".parse::<GameReveal>().unwrap(),
             "6 blue".parse::<GameReveal>().unwrap(),
         ];
 
-        let expected: u32 = 4*2*6;
+        let expected: u32 = 4 * 2 * 6;
         assert_eq!(expected, calculate_power_of_cubes(input));
     }
+
+
 
 
 }
