@@ -815,6 +815,8 @@ version = "0.1.0"
 dependencies = [
  "cucumber",
  "futures",
+ "lazy_static",
+ "regex",
 ]
 
 [[package]]
