@@ -3,11 +3,14 @@ name = "snow_island_game"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "calc_games"  # The name of your binary
+path = "src/main.rs"  # The path to your main file, if not src/main.rs
 
 [dependencies]
 regex = "1.10.2"
 lazy_static = "1.4.0"
+clap = "3.0"
 
 [dev-dependencies]
 cucumber = "0.20"

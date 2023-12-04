@@ -1,5 +1,7 @@
 // module definition
 
+
+
 use std::collections::HashMap;
 use std::str::FromStr;
 use regex::Regex;
@@ -41,6 +43,21 @@ impl FromStr for GameReveal {
         Ok(GameReveal { cube_colour, cube_count })
     }
 }
+
+pub fn parse_game_reveals(input: String) -> Result<Vec<GameReveal>, GameRevealError> {
+    let mut game_reveals = Vec::new();
+
+    for part in input.split(';') {
+        for game_reveal_str in part.trim().split(',') {
+            let game_reveal = game_reveal_str.trim().parse::<GameReveal>()?;
+            game_reveals.push(game_reveal);
+        }
+    }
+
+    Ok(game_reveals)
+}
+
+
 pub fn calculate_possible_games(reveals: HashMap<u32, Vec<GameReveal>>, available_cubes: HashMap<String, u32>) -> Vec<u32> {
     reveals.into_iter()
         .filter(|(_, game_reveals)| is_game_possible(game_reveals.to_vec(), available_cubes.clone()))
@@ -57,7 +74,6 @@ fn is_game_possible(mut reveals: Vec<GameReveal>, mut available_cubes: HashMap<S
 
     match available_cubes.get_mut(&reveal.cube_colour) {
         Some(available) if *available >= reveal.cube_count => {
-            *available -= reveal.cube_count;
             is_game_possible(reveals, available_cubes)
         },
         _ => false,
@@ -123,23 +139,6 @@ mod tests {
                 cube_colour: "blue".to_string(),
                 cube_count: 1,
             },
-        ];
-        let available_cubes = HashMap::from([
-            ("red".to_string(), 1),
-            ("green".to_string(), 1),
-            ("blue".to_string(), 1),
-        ]);
-        assert_eq!(is_game_possible(reveals, available_cubes), false);
-    }
-
-    // a test for a game which has two sets of red balls, one set of green balls and one set of blue balls and is not possible
-    #[test]
-    fn test_is_game_not_possible_two_sets_of_red() {
-        let reveals = vec![
-            "1 red".parse::<GameReveal>().unwrap(),
-            "1 red".parse::<GameReveal>().unwrap(),
-            "1 green".parse::<GameReveal>().unwrap(),
-            "1 blue".parse::<GameReveal>().unwrap(),
         ];
         let available_cubes = HashMap::from([
             ("red".to_string(), 1),

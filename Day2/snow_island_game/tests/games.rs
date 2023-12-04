@@ -1,7 +1,7 @@
 use cucumber::{given, then, when, World};
 use std::collections::HashMap;
-use std::str::FromStr;
-use snow_island_game::island_games::{GameReveal, calculate_possible_games};
+use snow_island_game::island_games::{GameReveal, parse_game_reveals, calculate_possible_games};
+
 
 
 // `World` is your shared, likely mutable state.
@@ -22,9 +22,7 @@ fn bag_with(world: &mut CubeGameWorld, red: u32, green: u32, blue: u32) {
 
 #[when(regex = r"^Game (\d): (.+)$")]
 fn the_game_reveals(world: &mut CubeGameWorld, game: u32, reveals: String){
-    let game_reveals = reveals.split(", ")
-        .map(|reveal| GameReveal::from_str(reveal).unwrap())
-        .collect::<Vec<GameReveal>>();
+    let game_reveals = parse_game_reveals(reveals).unwrap();
 
     world.game_reveals.insert(game, game_reveals);
 
