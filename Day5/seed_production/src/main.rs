@@ -181,7 +181,6 @@ fn process_seed_ranges(seed_ranges: Vec<(i64, i64)>, garden_mapper: &GardenMappe
         .flat_map(|(start, length)| (start..start + length))
         .map(|seed| {
             // Process each seed to find its corresponding location
-            // Replace the following with your actual logic to get the location for a seed
             garden_mapper.find_location_for_seed(seed)
         })
         .min()
