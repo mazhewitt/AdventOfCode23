@@ -5,9 +5,11 @@
       <sourceFolder url="file://$MODULE_DIR$/Day2/snow_island_game/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day2/snow_island_game/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/Day4/scratchcards/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Day5/seed_production/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/Day2/snow_island_game/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day4/scratchcards/target" />
+      <excludeFolder url="file://$MODULE_DIR$/Day5/seed_production/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
