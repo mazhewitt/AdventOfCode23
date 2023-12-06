@@ -8,11 +8,13 @@
       <sourceFolder url="file://$MODULE_DIR$/Day4/scratchcards/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day5/seed_production/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Day6/BoatRaces/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/Day1/CalibrationValueSummarizer/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day2/snow_island_game/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day4/scratchcards/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day5/seed_production/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/Day6/BoatRaces/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
