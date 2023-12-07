@@ -16,20 +16,28 @@ struct Hand {
     cards: String,
     hand_type: HandType,
     score: u32, // New score field with a default value of 0
+    use_joker: bool,
 }
 
 impl Hand {
     fn new(cards: String) -> Hand {
-        let hand_type = Hand::determine_hand_type(&cards);
-        Hand { cards, hand_type, score: 0 }
+        let use_joker = false;
+        let hand_type = Hand::determine_hand_type(&cards, use_joker);
+        Hand { cards, hand_type, score: 0, use_joker }
     }
 
     fn new_with_score(cards: String, score: u32) -> Hand {
-        let hand_type = Hand::determine_hand_type(&cards);
-        Hand { cards, hand_type, score }
+        let use_joker = false;
+        let hand_type = Hand::determine_hand_type(&cards, use_joker);
+        Hand { cards, hand_type, score, use_joker }
+    }
+    fn new_with_score_and_jokers(cards: String, score: u32) -> Hand {
+        let use_joker = true;
+        let hand_type = Hand::determine_hand_type(&cards, use_joker);
+        Hand { cards, hand_type, score, use_joker }
     }
 
-    fn determine_hand_type(hand: &String) -> HandType {
+    fn determine_hand_type(hand: &String, use_jokers:bool) -> HandType {
         let mut card_counts = std::collections::HashMap::new();
 
         // Count the occurrences of each card
@@ -40,22 +48,70 @@ impl Hand {
         let mut counts: Vec<_> = card_counts.values().cloned().collect();
         counts.sort(); // Sort the counts
 
-        match counts.as_slice() {
-            [5, ..] => HandType::FiveOfAKind,
-            [1, 4, ..] | [4, 1, ..] => HandType::FourOfAKind,
-            [2, 3, ..] | [3, 2, ..] => HandType::FullHouse,
-            [1, 1, 3, ..] | [1, 3, 1, ..] | [3, 1, 1, ..] => HandType::ThreeOfAKind,
-            [1, 2, 2, ..] | [2, 1, 2, ..] | [2, 2, 1, ..] => HandType::TwoPair,
-            [1, 1, 1, 2, ..] => HandType::OnePair,
-            _ => HandType::HighCard,
+        let mut hand_type = HandType::HighCard;
+        let j_count = *card_counts.get(&'J').unwrap_or(&0);
+
+        if use_jokers && j_count > 0{
+            match j_count {
+                1 => hand_type = {
+                    match counts.as_slice() {
+                        [1, 4, ..] => HandType::FiveOfAKind,
+                        [1, 3, 2, ..] => HandType::FourOfAKind,
+                        [1, 2, 2, ..] => HandType::FullHouse,
+                        [1, 1, 1, 2, ..] => HandType::ThreeOfAKind,
+                        [1, 1, 3, ..] => HandType::FourOfAKind,
+                        _ => HandType::OnePair,
+                    }
+                },
+                2 => hand_type = {
+                    match counts.as_slice() {
+                        [2, 3, ..] => HandType::FiveOfAKind,
+                        [1, 2, 2, ..] => HandType::FourOfAKind,
+                        _ => HandType::ThreeOfAKind,
+                    }
+                },
+                3 => hand_type = {
+                    match counts.as_slice() {
+                        [1, 1, 3, ..] => HandType::FourOfAKind,
+                        _ => HandType::FiveOfAKind,
+                    }
+                },
+                4 => hand_type = HandType::FiveOfAKind,
+                5 => hand_type = HandType::FiveOfAKind,
+                _ => hand_type = HandType::OnePair,
+            }
+
         }
+        else {
+            hand_type = match counts.as_slice() {
+                [5, ..] => HandType::FiveOfAKind,
+                [1, 4, ..] | [4, 1, ..] => HandType::FourOfAKind,
+                [2, 3, ..] | [3, 2, ..] => HandType::FullHouse,
+                [1, 1, 3, ..] | [1, 3, 1, ..] | [3, 1, 1, ..] => HandType::ThreeOfAKind,
+                [1, 2, 2, ..] | [2, 1, 2, ..] | [2, 2, 1, ..] => HandType::TwoPair,
+                [1, 1, 1, 2, ..] => HandType::OnePair,
+                _ => HandType::HighCard,
+            };
+        }
+        hand_type
     }
     fn compare_cards(&self, other: &Self) -> Ordering {
         // Assert that hand types are the same
         assert_eq!(self.hand_type, other.hand_type, "compare_cards called with hands of different types");
 
         let card_value = |card: char| -> u8 {
-            match card {
+            if self.use_joker {
+                match card {
+                    'A' => 14,
+                    'K' => 13,
+                    'Q' => 12,
+                    'J' => 1,
+                    'T' => 10,
+                    '2'..='9' => card.to_digit(10).unwrap() as u8,
+                    _ => 0, // Default case for unexpected characters
+                }
+            } else {
+                match card {
                 'A' => 14,
                 'K' => 13,
                 'Q' => 12,
@@ -63,8 +119,10 @@ impl Hand {
                 'T' => 10,
                 '2'..='9' => card.to_digit(10).unwrap() as u8,
                 _ => 0, // Default case for unexpected characters
+                }
             }
         };
+
 
         // loop though the cards in the hands with zip
         for (card1, card2) in self.cards.chars().zip(other.cards.chars()) {
@@ -108,7 +166,7 @@ impl PartialEq for Hand {
 
 impl Eq for Hand {}
 
-fn load_data_frm_file(filename: &str) -> Vec<Hand> {
+fn load_data_frm_file(filename: &str, use_joker: bool) -> Vec<Hand> {
     let contents = fs::read_to_string(filename)
         .expect("Something went wrong reading the file");
 
@@ -118,7 +176,11 @@ fn load_data_frm_file(filename: &str) -> Vec<Hand> {
             let parts: Vec<&str> = line.split_whitespace().collect();
             let cards = parts[0].to_string();
             let score = parts[1].parse::<u32>().expect("Invalid score format");
-            Hand::new_with_score(cards, score)
+            if use_joker {
+                Hand::new_with_score_and_jokers(cards, score)
+            } else {
+                Hand::new_with_score(cards, score)
+            }
         })
         .collect();
     hands
@@ -133,6 +195,7 @@ fn calculate_total_winnings(hands: &mut [Hand]) -> u32 {
     // Enumerate provides the index, which is one less than the rank (since index starts at 0)
     hands.iter().enumerate().fold(0, |acc, (index, hand)| {
         let rank = index + 1; // Rank starts from 1, not 0
+        println!("Rank: {} Hand: {:?} HandType {:?} HandScore: {:?}, RANK Score {:?}", rank, hand.cards, hand.hand_type, hand.score, acc + (hand.score * rank as u32));
         acc + (hand.score * rank as u32) // Calculate the winnings for this hand and add to the total
     })
 }
@@ -149,7 +212,7 @@ mod tests {
     fn test_loading_hands_from_file() {
         let filename = "test_data.txt";
 
-        let hands = load_data_frm_file(filename);
+        let hands = load_data_frm_file(filename, false);
 
         // Example assertion
         assert_eq!(hands[0], Hand::new_with_score(String::from("32T3K"), 765));
@@ -257,6 +320,51 @@ mod tests {
             }
         }
 
+        #[test]
+        fn test_joker_rule_and_winnings() {
+            let mut hands = vec![
+                Hand::new_with_score_and_jokers(String::from("32T3K"), 765), // One pair
+                Hand::new_with_score_and_jokers(String::from("KK677"), 28),  // Two pair
+                Hand::new_with_score_and_jokers(String::from("T55J5"), 684), // Four of a kind with Joker
+                Hand::new_with_score_and_jokers(String::from("KTJJT"), 220), // Four of a kind with Joker
+                Hand::new_with_score_and_jokers(String::from("QQQJA"), 483), // Four of a kind with Joker
+                Hand::new_with_score_and_jokers(String::from("JJJJJ"), 1), // Five of a kind with Joker
+            ];
+
+            // Sort and calculate total winnings
+            let total_winnings = calculate_total_winnings(&mut hands);
+
+            // Assert the total winnings
+            assert_eq!(total_winnings, 5911);
+
+
+        }
+
+
+        #[test]
+        fn test_joker_combinations() {
+            let test_cases = vec![
+                // One Joker
+                (String::from("AJ234"), HandType::OnePair),
+                (String::from("AAJ23"), HandType::ThreeOfAKind),
+                (String::from("AA22J"), HandType::FullHouse),
+                (String::from("AAA2J"), HandType::FourOfAKind),
+                (String::from("AA22J"), HandType::FullHouse),
+                (String::from("AAAAJ"), HandType::FiveOfAKind),
+                // Two Jokers
+                (String::from("AJJ23"), HandType::ThreeOfAKind),
+                (String::from("AAJJ3"), HandType::FourOfAKind),
+                (String::from("AAJJ2"), HandType::FourOfAKind),
+                (String::from("AAAJJ"), HandType::FiveOfAKind),
+                (String::from("AAJJ2"), HandType::FourOfAKind),
+                // Add more cases as needed
+            ];
+
+            for (hand, expected_type) in test_cases {
+                assert_eq!(Hand::determine_hand_type(&hand, true), expected_type, "Failed at hand: {}", hand);
+            }
+        }
+
 }
 
 
@@ -264,7 +372,7 @@ mod tests {
 
 fn main() {
     //load real data
-    let mut hands = load_data_frm_file("camel_card_data.txt");
+    let mut hands = load_data_frm_file("camel_card_data.txt", true);
     let total_winnings = calculate_total_winnings(&mut hands);
     // print the total winnings
     println!("Total winnings: {}", total_winnings);
