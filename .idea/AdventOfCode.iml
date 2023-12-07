@@ -10,6 +10,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day3/scematic/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day6/BoatRaces/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Day7/camel_cards/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/Day1/CalibrationValueSummarizer/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day2/snow_island_game/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day4/scratchcards/target" />
@@ -17,6 +18,7 @@
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day3/scematic/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day6/BoatRaces/target" />
+      <excludeFolder url="file://$MODULE_DIR$/Day7/camel_cards/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
