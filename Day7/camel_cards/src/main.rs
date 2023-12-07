@@ -357,7 +357,6 @@ mod tests {
                 (String::from("AAJJ2"), HandType::FourOfAKind),
                 (String::from("AAAJJ"), HandType::FiveOfAKind),
                 (String::from("AAJJ2"), HandType::FourOfAKind),
-                // Add more cases as needed
             ];
 
             for (hand, expected_type) in test_cases {
