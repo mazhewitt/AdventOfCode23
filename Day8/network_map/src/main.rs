@@ -30,9 +30,8 @@ fn read_puzzle_input(file_path: &str) -> io::Result<(Vec<char>, HashMap<String, 
 }
 
 fn find_escape_steps(instructions: Vec<char>, network: HashMap<String, Vec<String>>) -> u64 {
-    let mut current_nodes: Vec<String> = network.keys()
+    let mut current_nodes: Vec<&String> = network.keys()
         .filter(|node| node.ends_with('A'))
-        .cloned()
         .collect();
 
     let mut steps = 0;
@@ -45,8 +44,8 @@ fn find_escape_steps(instructions: Vec<char>, network: HashMap<String, Vec<Strin
                 continue;
             }
 
-            let next_node = &network[node][if instructions[steps % instructions.len()] == 'L' { 0 } else { 1 }];
-            *node = next_node.clone();
+            let next_node = &network[*node][if instructions[steps % instructions.len()] == 'L' { 0 } else { 1 }];
+            *node = next_node;
 
             if next_node.ends_with('Z') && completed_steps[i] == 0 {
                 completed_steps[i] = steps + 1; // Record steps for paths reaching 'Z'
