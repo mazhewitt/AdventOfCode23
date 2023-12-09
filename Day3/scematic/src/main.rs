@@ -18,14 +18,13 @@ fn load_character_grid(filename: &str) -> Vec<Vec<char>> {
         .map(|line| line.chars().collect())
         .collect()
 }
-fn load_symbol_set<F>(grid: &Vec<Vec<char>>, mut is_symbol: F) -> HashSet<(usize, usize)>
+fn load_symbol_set(grid: &Vec<Vec<char>>, is_symbol: fn(char)->bool) -> HashSet<(usize, usize)>
     where
-        F: FnMut(char) -> bool + Clone,
 {
     grid.iter().enumerate().flat_map(|(row_index, row)| {
-        let mut is_symbol_clone = is_symbol.clone();
+
         row.iter().enumerate().filter_map(move |(col_index, &c)| {
-            if is_symbol_clone(c) {
+            if is_symbol(c) {
                 Some((col_index, row_index))
             } else {
                 None
