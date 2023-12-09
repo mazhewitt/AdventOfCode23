@@ -19,9 +19,7 @@ fn load_character_grid(filename: &str) -> Vec<Vec<char>> {
         .map(|line| line.chars().collect())
         .collect()
 }
-fn load_symbol_set(grid: &Vec<Vec<char>>, is_symbol: fn(char)->bool) -> HashSet<(usize, usize)>
-    where
-{
+fn load_symbol_set(grid: &Vec<Vec<char>>, is_symbol: fn(char)->bool) -> HashSet<(usize, usize)> {
     grid.iter().enumerate().flat_map(|(row_index, row)| {
 
         row.iter().enumerate().filter_map(move |(col_index, &c)| {
@@ -33,9 +31,6 @@ fn load_symbol_set(grid: &Vec<Vec<char>>, is_symbol: fn(char)->bool) -> HashSet<
         })
     }).collect()
 }
-
-
-
 
 fn calculate_gear_ratios(grid: &Vec<Vec<char>>) -> usize {
     let numbers = find_numbers(grid);
