@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
+use regex::Regex;
 
 fn main() {
     let grid = load_character_grid("input_file.txt");
@@ -69,48 +70,23 @@ impl NumberLocation {
             adjacent_points: HashSet::new(),
         }
     }
-
-
 }
 
 fn find_numbers(grid: &[Vec<char>]) -> Vec<NumberLocation> {
     let mut numbers = Vec::new();
     let grid_width = grid.first().map_or(0, |row| row.len());
     let grid_height = grid.len();
+    let re = Regex::new(r"\d+").unwrap();
 
     for (row_index, row) in grid.iter().enumerate() {
-        let mut current_number = String::new();
-        let mut number_start = (0, 0);
-
-        for (col_index, &c) in row.iter().enumerate() {
-            match c.is_numeric() {
-                true => {
-                    if current_number.is_empty() {
-                        number_start = (row_index, col_index);
-                    }
-                    current_number.push(c);
-                },
-                false => {
-                    if !current_number.is_empty() {
-                        if let Ok(number) = current_number.parse::<usize>() {
-                            numbers.push(NumberLocation {
-                                point: number_start,
-                                number,
-                                adjacent_points: adjacent_points_to_number(&current_number, number_start, grid_width, grid_height)
-                            });
-                        }
-                        current_number.clear();
-                    }
-                }
-            }
-        }
-
-        // Handle number at the end of a row
-        if let Ok(number) = current_number.parse::<usize>() {
+        let row_str: String = row.iter().collect();
+        for mat in re.find_iter(&row_str) {
+            let number_start = (row_index, mat.start());
+            let number: usize = mat.as_str().parse().unwrap();
             numbers.push(NumberLocation {
                 point: number_start,
                 number,
-                adjacent_points: adjacent_points_to_number(&current_number, number_start, grid_width, grid_height)
+                adjacent_points: adjacent_points_to_number(&mat.as_str().to_string(), number_start, grid_width, grid_height),
             });
         }
     }
