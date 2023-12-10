@@ -1,15 +1,18 @@
 use std::collections::{ HashSet};
 use std::fs;
-use petgraph::graph::{UnGraph};
+use geo::algorithm::contains::Contains;
+use geo::{Polygon, Point};
+
 
 
 
 fn main() {
     let grid = load_character_grid("input.txt");
-    let graph = build_path(&grid);
-    let furthest_distance = (graph.node_count() + (graph.node_count() % 2)) / 2;
+    let path = build_path(&grid);
+    let furthest_distance = (path.len() + (path.len() % 2)) / 2;
     println!("Furthest distance: {}", furthest_distance);
-    let enclosed_tiles = count_enclosed_tiles(&grid, &graph);
+    let polygon = create_polygon(&path);
+    let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
     println!("Enclosed tiles: {}", enclosed_tiles);
 
 }
@@ -145,32 +148,30 @@ fn find_connected(node: char, node_pos: usize, grid: &Vec<Vec<char>>) -> Vec<usi
 }
 
 
-fn build_path(grid: &Vec<Vec<char>>) -> UnGraph<usize, ()> {
+fn build_path(grid: &Vec<Vec<char>>) -> Vec<Point<f64>> {
     let width = grid[0].len();
-    let mut graph = UnGraph::new_undirected();
     let s_index = find_index_of_s(&grid).unwrap();
-    // add s to graph
-    let mut current_node = graph.add_node(s_index);
-    let nodes_connected_to_s = find_connected('S', s_index, &grid);
-    let mut current_node_index = nodes_connected_to_s[0];
-    let mut last_node_index = s_index;
+    let mut current_node_index = s_index;
+    let mut vertices = Vec::new();
+
     loop {
-        // we are at the beginning
-        if current_node_index == s_index {
+        // Convert index to coordinates and add to vertices
+        let current_point = index_to_point(current_node_index, width);
+        println!("at: {:?}", current_point.x_y());
+        vertices.push(current_point);
+
+        let connected_nodes = find_connected(grid[current_node_index / width][current_node_index % width], current_node_index, &grid);
+        println!("connected: {:?}", connected_nodes);
+        let next_node_index = connected_nodes.iter().find(|&x| *x != current_node_index).unwrap();
+        println!("next: {:?}", index_to_point(*next_node_index, width).x_y());
+        if *next_node_index == s_index {
+            println!("found S");
             break;
         }
-        let last_node = current_node;
-        current_node = graph.add_node(current_node_index);
-        graph.add_edge(last_node, current_node, ());
-        let connected_nodes = find_connected(grid[current_node_index / width][current_node_index % width], current_node_index, &grid);
-        // find the connected node that isn't last_node
-        let next_node_index = connected_nodes.iter().find(|&x| *x != last_node_index).unwrap();
-        last_node_index = current_node_index;
         current_node_index = *next_node_index;
-
     }
 
-    graph
+    vertices
 }
 
 
@@ -186,79 +187,34 @@ fn find_index_of_s(grid: &Vec<Vec<char>>) -> Option<usize> {
     None // Return None if 'S' is not found in the grid
 }
 
-fn flood_fill(grid: &mut Vec<Vec<char>>, row: usize, col: usize, loop_indices: &HashSet<usize>, replacement: char, width: usize) {
-    if row >= grid.len() || col >= grid[0].len() || loop_indices.contains(&(row * width + col)) || grid[row][col] == replacement {
-        return;
-    }
-
-    grid[row][col] = replacement;
-
-    flood_fill(grid, row.wrapping_sub(1), col, loop_indices, replacement, width);
-    flood_fill(grid, row + 1, col, loop_indices, replacement, width);
-    flood_fill(grid, row, col.wrapping_sub(1), loop_indices, replacement, width);
-    flood_fill(grid, row, col + 1, loop_indices, replacement, width);
+fn index_to_point(index: usize, width: usize) -> Point<f64> {
+    let x = (index % width) as f64;
+    let y = (index / width) as f64;
+    Point::new(x, y)
 }
 
-fn count_enclosed_tiles(grid: &Vec<Vec<char>>, graph: &UnGraph<usize, ()>) -> usize {
-    let mut grid_copy = grid.clone();
-    let height = grid.len();
+fn create_polygon(vertices: &Vec<Point<f64>>) -> Polygon<f64> {
+    Polygon::new(vertices.clone().into(), vec![])
+}
+
+
+fn count_enclosed_tiles(grid: &Vec<Vec<char>>, polygon: &Polygon<f64>) -> usize {
     let width = grid[0].len();
+    let height = grid.len();
+    let mut count = 0;
 
-    // Collect all indices from the graph nodes
-    let loop_indices: HashSet<_> = graph.node_indices().map(|n| graph[n]).collect();
-
-    for &idx in &loop_indices {
-        let row = idx / width;
-        let col = idx % width;
-        grid_copy[row][col] = '*';
-    }
-
-    // Flood fill from all edges of the grid to mark outside area
-    for col in 0..width {
-        flood_fill(&mut grid_copy, 0, col, &loop_indices, 'o', width); // Top edge
-        flood_fill(&mut grid_copy, height - 1, col, &loop_indices, 'o', width); // Bottom edge
-    }
-    for row in 0..height {
-        flood_fill(&mut grid_copy, row, 0, &loop_indices, 'o', width); // Left edge
-        flood_fill(&mut grid_copy, row, width - 1, &loop_indices, 'o', width); // Right edge
-    }
-
-    // Print the filled grid for visualization
-    print_grid(&grid_copy);
-
-    // Count the unmarked tiles
-    grid_copy.iter()
-        .flatten()
-        .filter(|&&c| c != '*' && c != 'o')
-        .count()
-
-
-}
-
-fn _visualize_grid_with_path(grid: &Vec<Vec<char>>, graph: &UnGraph<usize, ()>) {
-    let grid_width = grid[0].len();
-    let grid_height = grid.len();
-
-    // Create a set of loop nodes for quick lookup
-    let loop_nodes: HashSet<usize> = graph.node_indices()
-        .map(|node_index| graph[node_index])
-        .collect();
-    println!();
-    for i in 0..grid_height {
-        for j in 0..grid_width {
-            let linear_index = i * grid_width + j;
-            let tile = grid[i][j];
-
-            // Check if this position is part of the loop and not the start position
-            if loop_nodes.contains(&linear_index)  {
-                print!("*");
-            } else {
-                print!("{}", tile);
+    for y in 0..height {
+        for x in 0..width {
+            if grid[y][x] != '.' && polygon.contains(&Point::new(x as f64, y as f64)) {
+                count += 1;
             }
         }
-        println!(); // New line at the end of each row
     }
+
+    count
 }
+
+
 
 
 fn print_grid(grid: &Vec<Vec<char>>) {
@@ -303,7 +259,8 @@ mod tests {
         ];
 
     let path = build_path(&grid);
-    let enclosed_tiles = count_enclosed_tiles(&grid, &path);
+    let polygon = create_polygon(&path);
+    let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
 
         assert_eq!(enclosed_tiles, 4);
     }
@@ -314,7 +271,8 @@ mod tests {
     fn test_count_enclosed_tiles_example2() {
         let grid = load_character_grid("bigger_grid_input.txt");
         let path = build_path(&grid);
-        let enclosed_tiles = count_enclosed_tiles(&grid, &path);
+        let polygon = create_polygon(&path);
+        let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
         assert_eq!(enclosed_tiles, 10);
     }
 
@@ -322,34 +280,12 @@ mod tests {
     fn test_count_enclosed_tiles_example() {
         let grid = load_character_grid("second_test_input.txt");
         let path = build_path(&grid);
-        let enclosed_tiles = count_enclosed_tiles(&grid, &path);
+        let polygon = create_polygon(&path);
+        let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
         assert_eq!(enclosed_tiles, 8);
     }
 
-    fn visualize_grid_with_path(grid: &Vec<Vec<char>>, graph: &UnGraph<usize, ()>) {
-        let grid_width = grid[0].len();
-        let grid_height = grid.len();
 
-        // Create a set of loop nodes for quick lookup
-        let loop_nodes: HashSet<usize> = graph.node_indices()
-            .map(|node_index| graph[node_index])
-            .collect();
-
-        for i in 0..grid_height {
-            for j in 0..grid_width {
-                let linear_index = i * grid_width + j;
-                let tile = grid[i][j];
-
-                // Check if this position is part of the loop and not the start position
-                if loop_nodes.contains(&linear_index)  {
-                    print!("*");
-                } else {
-                    print!("{}", tile);
-                }
-            }
-            println!(); // New line at the end of each row
-        }
-    }
 
 
     #[test]
@@ -364,30 +300,30 @@ mod tests {
         ];
 
         // Build the graph from the grid
-        let graph = build_path(&grid);
+        let path = build_path(&grid);
 
         // Nodes expected to be in the graph
-        let expected_nodes: HashSet<usize> = vec![
-            6,  // 'S'
-            7,  // '-'
-            8,  // '7'
-            11, // '|'
-            13, // '|'
-            16, // 'L'
-            17, // '-'
-            18, // 'J'
+        let expected_nodes: Vec<Point<f64>> = vec![
+            index_to_point(6, grid[0].len()),  // 'S'
+            index_to_point(7, grid[0].len()),  // '-'
+            index_to_point(8, grid[0].len()),  // '7'
+            index_to_point(11, grid[0].len()), // '|'
+            index_to_point(13, grid[0].len()), // '|'
+            index_to_point(16, grid[0].len()), // 'L'
+            index_to_point(17, grid[0].len()), // '-'
+            index_to_point(18, grid[0].len()), // 'J'
         ].into_iter().collect();
 
-        visualize_grid_with_path(&grid, &graph);
+
 
         // Check if all expected nodes are present
-        for node_index in graph.node_indices() {
-            let node = graph[node_index];
-            assert!(expected_nodes.contains(&node), "Unexpected node in graph: {}", node);
+        for node in &path {
+
+            assert!(expected_nodes.contains(&node), "Unexpected node in graph: {:?}", node.x_y());
         }
 
         // Check if the number of nodes matches the expected
-        assert_eq!(graph.node_count(), expected_nodes.len(), "Incorrect number of nodes in graph");
+        assert_eq!(path.len(), expected_nodes.len(), "Incorrect number of nodes in graph");
 
         // You can add additional checks here to validate the edges and their connections
     }
