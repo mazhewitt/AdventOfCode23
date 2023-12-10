@@ -12,6 +12,7 @@
       <sourceFolder url="file://$MODULE_DIR$/Day6/BoatRaces/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day7/camel_cards/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day8/network_map/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Day10/pipes/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day9/env_analysis/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/Day1/CalibrationValueSummarizer/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day2/snow_island_game/target" />
@@ -22,6 +23,7 @@
       <excludeFolder url="file://$MODULE_DIR$/Day6/BoatRaces/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day7/camel_cards/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day8/network_map/target" />
+      <excludeFolder url="file://$MODULE_DIR$/Day10/pipes/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day9/env_analysis/target" />
     </content>
     <orderEntry type="inheritedJdk" />
