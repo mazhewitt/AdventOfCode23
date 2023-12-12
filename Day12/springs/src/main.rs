@@ -1,83 +1,85 @@
-use std::{fs};
 use std::collections::HashMap;
+use std::fs;
 
 fn main() {
-    let cache = &mut HashMap::new();
-    let test_springs = load_data("real_data.txt", false);
-    let actual_arrangements = test_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, cache)).sum::<usize>();
-    println!("Total Arrangements: {}", actual_arrangements);
-    let expanded_springs = load_data("real_data.txt", true);
-    let expanded_arrangements = expanded_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, cache)).sum::<usize>();
-    println!("Total Arrangements: {}", expanded_arrangements);
+    // Initialize a cache to store previously computed arrangements
+    let mut cache = HashMap::new();
 
+    // Load the original spring data from the file and calculate arrangements
+    let test_springs = load_data("real_data.txt", false);
+    let actual_arrangements = test_springs.iter()
+        .map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, &mut cache))
+        .sum::<usize>();
+    println!("Total Arrangements: {}", actual_arrangements);
+
+    // Repeat the process for the expanded (unfolded) spring data
+    let expanded_springs = load_data("real_data.txt", true);
+    let expanded_arrangements = expanded_springs.iter()
+        .map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, &mut cache))
+        .sum::<usize>();
+    println!("Total Arrangements: {}", expanded_arrangements);
 }
 
-
-
-fn find_arrangement_rec(cfg: &str, cond_groups: &Vec<usize>, cache: &mut HashMap<(String, Vec<usize>),usize>) -> usize {
-    if cfg.len() == 0 {
-        return if cond_groups.len() == 0 {
-            1
-        } else {
-            0
-        }
+// Recursive function to find the number of valid arrangements
+fn find_arrangement_rec(cfg: &str, cond_groups: &[usize], cache: &mut HashMap<(String, Vec<usize>), usize>) -> usize {
+    // Base cases: if the configuration or the condition groups are empty
+    if cfg.is_empty() {
+        return if cond_groups.is_empty() { 1 } else { 0 };
+    }
+    if cond_groups.is_empty() {
+        return if cfg.contains('#') { 0 } else { 1 };
     }
 
-    if cond_groups.len() == 0 {
-        return if cfg.contains("#")
-        {
-            0
-        } else {
-            1
-        }
-    }
-    if (cache.contains_key(&(cfg.to_string(), cond_groups.to_vec()))) {
-        return *cache.get(&(cfg.to_string(), cond_groups.to_vec())).unwrap();
+    // Check if the result is already computed and stored in the cache
+    let key = (cfg.to_string(), cond_groups.to_vec());
+    if let Some(&cached_value) = cache.get(&key) {
+        return cached_value;
     }
 
     let mut count = 0;
+    let char0 = cfg.chars().next().unwrap();
 
-    let char0 = cfg.chars().nth(0).unwrap();
-
-    if (char0 == '.') | (char0 == '?') {
+    // Recursive case: decide the fate of the first spring based on its state
+    if char0 == '.' || char0 == '?' {
         count += find_arrangement_rec(&cfg[1..], cond_groups, cache);
     }
-
-    if (char0 == '#') | (char0 == '?') {
-        // we are in a block
-        let bl = cond_groups[0];
-
-        if bl  <= cfg.len() && !&cfg[0..bl].contains(".") && (bl == cfg.len() || cfg.chars().nth(bl).unwrap() != '#') {
-            if bl == cfg.len(){
-                count += find_arrangement_rec(&cfg[bl..], &cond_groups[1..].to_vec(), cache);
-            }
-            else {
-                count += find_arrangement_rec(&cfg[bl + 1..], &cond_groups[1..].to_vec(), cache);
+    if char0 == '#' || char0 == '?' {
+        if let Some(&bl) = cond_groups.first() {
+            if bl <= cfg.len() && !cfg[..bl].contains('.') && (bl == cfg.len() || cfg.chars().nth(bl) != Some('#')) {
+                let new_cfg = if bl == cfg.len() { &cfg[bl..] } else { &cfg[bl+1..] };
+                count += find_arrangement_rec(new_cfg, &cond_groups[1..], cache);
             }
         }
     }
-    cache.insert((cfg.to_string(), cond_groups.to_vec()), count);
-    count
+
+    // Store the computed result in the cache
+    cache.insert(key, count);
+    return count;
 }
 
-fn load_data(file: &str, should_unfold:bool) -> Vec<(String, Vec<usize>)> {
-
+// Function to load data from the file
+fn load_data(file: &str, should_unfold: bool) -> Vec<(String, Vec<usize>)> {
+    // Read file and process each line based on the should_unfold flag
     fs::read_to_string(file)
         .expect("Failed to read file")
         .lines()
         .map(|line| if should_unfold { unfold(line) } else { line.to_string() })
-        .map(|line| split_data(&line))
+        .map(|x|split_data(&x))
         .collect()
-
 }
 
+// Function to split each line into spring configuration and condition groups
 fn split_data(line: &str) -> (String, Vec<usize>) {
-    let mut parts = line.split(" ");
+    let mut parts = line.split(' ');
     let cfg = parts.next().unwrap().to_string();
-    let cond_groups = parts.next().unwrap().split(",").map(|x| x.parse::<usize>().unwrap()).collect();
+    let cond_groups = parts.next().unwrap()
+        .split(',')
+        .map(|x| x.parse().unwrap())
+        .collect();
     (cfg, cond_groups)
 }
 
+// Function to unfold the condition records for part two of the problem
 fn unfold(line: &str) -> String {
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() != 2 {
@@ -85,17 +87,17 @@ fn unfold(line: &str) -> String {
     }
 
     let (cfg, nums) = (parts[0], parts[1]);
-
+    // Repeat the configuration and numbers with '?' and ',' separators respectively
     let unfolded_cfg = std::iter::repeat(cfg).take(5).collect::<Vec<&str>>().join("?");
-
-    let nums: Vec<String> = nums.split(',')
+    let unfolded_nums = nums.split(',')
         .map(|num| num.to_string())
-        .collect();
-    let unfolded_nums = nums.join(",");
+        .collect::<Vec<String>>()
+        .join(",");
     let unfolded_nums = std::iter::repeat(unfolded_nums).take(5).collect::<Vec<String>>().join(",");
 
     format!("{} {}", unfolded_cfg, unfolded_nums)
 }
+
 
 
 #[cfg(test)]
