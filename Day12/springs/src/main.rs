@@ -1,18 +1,20 @@
 use std::{fs};
+use std::collections::HashMap;
 
 fn main() {
+    let cache = &mut HashMap::new();
     let test_springs = load_data("real_data.txt", false);
-    let actual_arrangements = test_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups)).sum::<usize>();
+    let actual_arrangements = test_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, cache)).sum::<usize>();
     println!("Total Arrangements: {}", actual_arrangements);
     let expanded_springs = load_data("real_data.txt", true);
-    let expanded_arrangements = expanded_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups)).sum::<usize>();
+    let expanded_arrangements = expanded_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, cache)).sum::<usize>();
     println!("Total Arrangements: {}", expanded_arrangements);
 
 }
 
 
 
-fn find_arrangement_rec(cfg: &str, cond_groups: &Vec<usize>) -> usize {
+fn find_arrangement_rec(cfg: &str, cond_groups: &Vec<usize>, cache: &mut HashMap<(String, Vec<usize>),usize>) -> usize {
     if cfg.len() == 0 {
         return if cond_groups.len() == 0 {
             1
@@ -29,12 +31,16 @@ fn find_arrangement_rec(cfg: &str, cond_groups: &Vec<usize>) -> usize {
             1
         }
     }
+    if (cache.contains_key(&(cfg.to_string(), cond_groups.to_vec()))) {
+        return *cache.get(&(cfg.to_string(), cond_groups.to_vec())).unwrap();
+    }
+
     let mut count = 0;
 
     let char0 = cfg.chars().nth(0).unwrap();
 
     if (char0 == '.') | (char0 == '?') {
-        count += find_arrangement_rec(&cfg[1..], cond_groups);
+        count += find_arrangement_rec(&cfg[1..], cond_groups, cache);
     }
 
     if (char0 == '#') | (char0 == '?') {
@@ -43,14 +49,14 @@ fn find_arrangement_rec(cfg: &str, cond_groups: &Vec<usize>) -> usize {
 
         if bl  <= cfg.len() && !&cfg[0..bl].contains(".") && (bl == cfg.len() || cfg.chars().nth(bl).unwrap() != '#') {
             if bl == cfg.len(){
-                count += find_arrangement_rec(&cfg[bl..], &cond_groups[1..].to_vec());
+                count += find_arrangement_rec(&cfg[bl..], &cond_groups[1..].to_vec(), cache);
             }
             else {
-                count += find_arrangement_rec(&cfg[bl + 1..], &cond_groups[1..].to_vec());
+                count += find_arrangement_rec(&cfg[bl + 1..], &cond_groups[1..].to_vec(), cache);
             }
         }
     }
-
+    cache.insert((cfg.to_string(), cond_groups.to_vec()), count);
     count
 }
 
@@ -108,7 +114,8 @@ mod tests {
     fn test_can_find_arrangements_for_single_case() {
         let test_spring = split_data("?###???????? 3,2,1");
         let expected_arrangements = 10;
-        let actual_arrangements = find_arrangement_rec(&test_spring.0, &test_spring.1);
+        let cache = &mut HashMap::new();
+        let actual_arrangements = find_arrangement_rec(&test_spring.0, &test_spring.1, cache);
         assert_eq!(expected_arrangements, actual_arrangements);
 
     }
@@ -116,7 +123,8 @@ mod tests {
     #[test]
     fn test_can_find_arrangements_for_multiple_cases() {
         let test_springs = load_data("test_data.txt", false);
-        let actual_arrangements = test_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups)).sum::<usize>();
+        let cache = &mut HashMap::new();
+        let actual_arrangements = test_springs.iter().map(|(cfg, cond_groups)| find_arrangement_rec(cfg, cond_groups, cache)).sum::<usize>();
         assert_eq!(21, actual_arrangements);
 
     }
@@ -136,8 +144,8 @@ mod tests {
     fn test_can_find_arrangements_for_expanded_case() {
         let test_spring = split_data(&unfold("?###???????? 3,2,1"));
         let expected_arrangements = 506250;
-
-        let actual_arrangements = find_arrangement_rec(&test_spring.0, &test_spring.1);
+        let cache = &mut HashMap::new();
+        let actual_arrangements = find_arrangement_rec(&test_spring.0, &test_spring.1, cache);
         assert_eq!(expected_arrangements, actual_arrangements);
 
     }
