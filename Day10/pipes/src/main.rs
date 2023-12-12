@@ -25,175 +25,130 @@ fn load_character_grid(filename: &str) -> Vec<Vec<char>> {
         .collect()
 }
 
-fn find_connected(node: char, node_pos: usize, grid: &Vec<Vec<char>>) -> Vec<usize> {
-    let width = grid[0].len();
-    let height = grid.len();
+fn find_connected(node: char, node_pos: (usize,usize), grid: &Vec<Vec<char>>) -> Vec<usize, usize> {
+    let path = vec!([]);
+
     match node {
-        '.' => vec![],
-        '|' => {
-            let mut connected = Vec::new();
-            if node_pos >= width {
-                connected.push(node_pos - width);
-            }
-            if node_pos + width < height * width {
-                connected.push(node_pos + width);
-            }
-            connected
-        },
-        '-' => {
-            let mut connected = Vec::new();
-            if node_pos % width > 0 {
-                connected.push(node_pos - 1);
-            }
-            if node_pos % width < width - 1 {
-                connected.push(node_pos + 1);
-            }
-            connected
-        },
-        'L' => {
-            let mut connected = Vec::new();
-            if node_pos >= width {
-                connected.push(node_pos - width);
-            }
-            if node_pos % width < width - 1 {
-                connected.push(node_pos + 1);
-            }
-            connected
-        },
-        'J' => {
-            let mut connected = Vec::new();
-            if node_pos >= width {
-                connected.push(node_pos - width);
-            }
-            if node_pos % width > 0 {
-                connected.push(node_pos - 1);
-            }
-            connected
-        },
-        '7' => {
-            let mut connected = Vec::new();
-            if node_pos + width < height * width {
-                connected.push(node_pos + width);
-            }
-            if node_pos % width > 0 {
-                connected.push(node_pos - 1);
-            }
-            connected
-        },
-        'F' => {
-            let mut connected = Vec::new();
-            if node_pos + width < height * width {
-                connected.push(node_pos + width);
-            }
-            if node_pos % width < width - 1 {
-                connected.push(node_pos + 1);
-            }
-            connected
-        },
         'S' => {
-            let row = node_pos / width;
-            let col = node_pos % width;
-
-            let mut neighbors = Vec::new();
-
-            // North
-            if row > 0 {
-                //north
-                let north = (row - 1) * width + col;
-                match grid[row-1][col] {
-                    '|'|'F'|'7' => {
-                        neighbors.push(north);
-                    },
+            //look north
+            if (node_pos.0) > 0{
+                match grid[node_pos.0 -1][node_pos] {
+                    '|' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
                     _ => {}
                 }
             }
-
-            // South
-            if row < height - 1 {
-                let south = (row + 1) * width + col;
-                match grid[row+1][col] {
-                    '|'|'J'|'L' => {
-                        neighbors.push(south);
-                    },
-                    _ => {}
-                }
-
-            }
-            // West
-            if col > 0 {
-               let west = row * width + (col - 1);
-                match grid[row][col-1] {
-                     '-'|'L'|'F' => {
-                          neighbors.push(west);
-                     },
+            //look south
+            if (node_pos.0) < grid[0].len(){
+                match grid[node_pos.0 +1][node_pos] {
+                    '|' | 'J' | 'L' => path.push((node_pos.0 +1, node_pos));
                     _ => {}
                 }
             }
-
-            // East
-            if col < width - 1 {
-                let east = row * width + (col + 1);
-                match grid[row][col+1] {
-                    '-'|'J'|'7' => {
-                        neighbors.push(east);
-                    },
+            //look west
+            if (node_pos.1) > 0{
+                match grid[node_pos.1 -1][node_pos] {
+                    '-' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
                     _ => {}
                 }
             }
-            assert_eq!(neighbors.len(), 2);
-            neighbors
-        },
-        _ => vec![], // Handle unexpected characters
-    }
-}
-
-
-fn build_path(grid: &Vec<Vec<char>>) -> Vec<Point<f64>> {
-    let width = grid[0].len();
-    let s_index = find_index_of_s(&grid).unwrap();
-    let mut current_node_index = s_index;
-    let mut vertices = Vec::new();
-
-    loop {
-        // Convert index to coordinates and add to vertices
-        let current_point = index_to_point(current_node_index, width);
-        println!("at: {:?}", current_point.x_y());
-        vertices.push(current_point);
-
-        let connected_nodes = find_connected(grid[current_node_index / width][current_node_index % width], current_node_index, &grid);
-        println!("connected: {:?}", connected_nodes);
-        let next_node_index = connected_nodes.iter().find(|&x| *x != current_node_index).unwrap();
-        println!("next: {:?}", index_to_point(*next_node_index, width).x_y());
-        if *next_node_index == s_index {
-            println!("found S");
-            break;
+            // look east
+            if (node_pos.1) < grid.len(){
+                match grid[node_pos.1 +1][node_pos] {
+                    '-' | 'J' | '7' => path.push((node_pos.0 +1, node_pos));
+                    _ => {}
+                }
+            }
         }
-        current_node_index = *next_node_index;
+        '|' => {
+            //look north
+            if (node_pos.0) > 0{
+                match grid[node_pos.0 -1][node_pos] {
+                    '|' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
+                    _ => {}
+                }
+            }
+            //look south
+            if (node_pos.0) < grid[0].len(){
+                match grid[node_pos.0 +1][node_pos] {
+                    '|' | 'J' | 'L' => path.push((node_pos.0 +1, node_pos));
+                    _ => {}
+                }
+            }
+        }
+        '-' => {
+            //look west
+            if (node_pos.1) > 0{
+                match grid[node_pos.1 -1][node_pos] {
+                    '-' | 'L' | 'F' => path.push((node_pos.0 -1, node_pos));
+                    _ => {}
+                }
+            }
+            // look east
+            if (node_pos.1) < grid.len(){
+                match grid[node_pos.1 +1][node_pos] {
+                    '-' | 'J' | '7' => path.push((node_pos.1 +1, node_pos));
+                    _ => {}
+                }
+            }
+        }
+        '7' => {
+            //look north
+            if (node_pos.0) > 0{
+                match grid[node_pos.0 -1][node_pos] {
+                    '|' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
+                    _ => {}
+                }
+            }
+            // look east
+            if (node_pos.1) < grid.len(){
+                match grid[node_pos.1 +1][node_pos] {
+                    '-' | 'J' | '7' => path.push((node_pos.0 +1, node_pos));
+                    _ => {}
+                }
+            }
+        }
+        'F' => {
+            //look south
+            if (node_pos.0) < grid[0].len(){
+                match grid[node_pos.0 +1][node_pos] {
+                    '|' | 'J' | 'L' => path.push((node_pos.1 +1, node_pos));
+                    _ => {}
+                }
+            }
+            // look east
+            if (node_pos.1) < grid.len(){
+                match grid[node_pos.1 +1][node_pos] {
+                    '-' | 'J' | '7' => path.push((node_pos.0 +1, node_pos));
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
     }
 
-    vertices
 }
 
 
-fn find_index_of_s(grid: &Vec<Vec<char>>) -> Option<usize> {
-    let width = grid[0].len();
+fn build_path(grid: &Vec<Vec<char>>) -> Vec<usize, usize> {
 
-    for (i, row) in grid.iter().enumerate() {
+}
+
+
+fn find_index_of_s(grid: &Vec<Vec<char>>) -> Option<usize, usize> {
+    let width = grid.len();
+
+    for (i, col) in grid.iter().enumerate() {
         if let Some(j) = row.iter().position(|&c| c == 'S') {
-            return Some(i * width + j);
+            return Some(i * width +j);
         }
     }
 
     None // Return None if 'S' is not found in the grid
 }
 
-fn index_to_point(index: usize, width: usize) -> Point<f64> {
-    let x = (index % width) as f64;
-    let y = (index / width) as f64;
-    Point::new(x, y)
-}
 
-fn create_polygon(vertices: &Vec<Point<f64>>) -> Polygon<f64> {
+
+fn create_polygon(vertices: &Vec<Vec<usize,usize>>) -> Polygon<f64> {
     Polygon::new(vertices.clone().into(), vec![])
 }
 
@@ -244,7 +199,7 @@ mod tests {
         let s_index = find_index_of_s(&grid).unwrap();
         assert_eq!(s_index, 10);
     }
-#[test]
+    #[test]
     fn test_count_enclosed_tiles() {
         let grid = vec![
             vec!['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'],
