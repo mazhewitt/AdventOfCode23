@@ -98,6 +98,48 @@ fn unfold(line: &str) -> String {
     format!("{} {}", unfolded_cfg, unfolded_nums)
 }
 
+fn find_arrangement(cfg: &str, cond_groups: &[usize]) -> usize {
+    let n = cfg.len();
+    let m = cond_groups.len();
+    let mut dp = vec![vec![0; m + 1]; n + 1];
+
+    // Base case: If both the spring row and condition groups are exhausted, there's 1 valid arrangement
+    dp[n][m] = 1;
+
+    for i in (0..n).rev() {
+        for j in (0..=m).rev() {
+            // If there are no more condition groups to satisfy
+            if j == m {
+                dp[i][j] = if cfg[i..].chars().all(|c| c == '.' || c == '?') { 1 } else { 0 };
+                continue;
+            }
+
+            let mut total_arrangements = 0;
+
+            // Case 1: Current spring is operational or unknown
+            if cfg.chars().nth(i) != Some('#') {
+                total_arrangements += dp[i + 1][j];
+            }
+
+            // Case 2: Current spring starts a damaged group
+            let remaining_length = n - i;
+            if remaining_length >= cond_groups[j] &&
+                (remaining_length == cond_groups[j] || cfg.chars().nth(i + cond_groups[j]) != Some('#')) {
+
+                let valid_group = cfg[i..i + cond_groups[j]].chars().all(|c| c == '#' || c == '?');
+                if valid_group {
+                    total_arrangements += dp[i + cond_groups[j]][j + 1];
+                }
+            }
+
+            dp[i][j] = total_arrangements;
+        }
+    }
+
+    dp[0][0]
+}
+
+
 
 
 #[cfg(test)]
@@ -119,6 +161,8 @@ mod tests {
         let cache = &mut HashMap::new();
         let actual_arrangements = find_arrangement_rec(&test_spring.0, &test_spring.1, cache);
         assert_eq!(expected_arrangements, actual_arrangements);
+        let dp_r = find_arrangement(&test_spring.0, &test_spring.1);
+        assert_eq!(expected_arrangements, dp_r);
 
     }
 
