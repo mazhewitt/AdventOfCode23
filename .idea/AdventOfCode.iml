@@ -17,6 +17,7 @@
       <sourceFolder url="file://$MODULE_DIR$/Day11/galaxies/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day12/springs/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Day13/mirrors/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Day15/hashes/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/Day1/CalibrationValueSummarizer/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day2/snow_island_game/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day4/scratchcards/target" />
@@ -31,6 +32,7 @@
       <excludeFolder url="file://$MODULE_DIR$/Day11/galaxies/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day12/springs/target" />
       <excludeFolder url="file://$MODULE_DIR$/Day13/mirrors/target" />
+      <excludeFolder url="file://$MODULE_DIR$/Day15/hashes/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
