@@ -1,98 +1,121 @@
+use std::collections::HashMap;
 use std::fs;
 
 fn main() {
     let data = load_data("input.txt");
-    let sum =  data.iter().map(|s| hash(s)).sum::<usize>();
-    println!("sum: {}", sum);
+    let sum = data.iter().map(|s| hash(s)).sum::<usize>();
+    println!("sum part 1: {}", sum);
+    let lens_calc = calculate_lenses(&data);
+    println!("lens calculation: {}", lens_calc);
 }
-/*
-The HASH algorithm is a way to turn any string of characters into a single number in the range 0 to 255. To run the HASH algorithm on a string, start with a current value of 0. Then, for each character in the string starting from the beginning:
 
-Determine the ASCII code for the current character of the string.
-Increase the current value by the ASCII code you just determined.
-Set the current value to itself multiplied by 17.
-Set the current value to the remainder of dividing itself by 256.
-After following these steps for each character in the string in order, the current value is the output of the HASH algorithm.
- */
+#[derive(Clone)]
+struct Lens {
+    label: String,
+    focal_length: usize,
+}
+
+impl Lens {
+    fn new(label: String, focal_length: usize) -> Lens {
+        Lens { label, focal_length }
+    }
+}
 
 fn hash(s: &str) -> usize {
-    let mut current_value = 0;
-    for c in s.chars() {
-        let ascii_code = c as usize;
-        current_value += ascii_code;
-        current_value *= 17;
-        current_value %= 256;
+    s.chars()
+        .fold(0, |mut acc, c| {
+            acc += c as usize;
+            acc *= 17;
+            acc %= 256;
+            acc
+        })
+}
+
+fn calculate_lenses(data: &[String]) -> usize {
+    let mut hashmap: HashMap<usize, Vec<Lens>> = HashMap::new();
+    for lens_op in data {
+        process_lens_op(lens_op, &mut hashmap);
     }
-    current_value
+    calculate_result(&hashmap)
+}
+
+fn process_lens_op(lens_op: &str, hashmap: &mut HashMap<usize, Vec<Lens>>) {
+    let parts: Vec<&str> = lens_op.split('=').collect();
+    if lens_op.contains('=') && parts.len() == 2 {
+        process_assignment(parts, hashmap);
+    } else if lens_op.contains('-') {
+        process_removal(lens_op, hashmap);
+    }
+}
+
+fn process_assignment(parts: Vec<&str>, hashmap: &mut HashMap<usize, Vec<Lens>>) {
+    let index = hash(parts[0]);
+    let index_str = parts[0].to_string();
+    let value: usize = parts[1].parse().unwrap();
+    let lenses = hashmap.entry(index).or_insert_with(Vec::new);
+    update_or_insert_lens(lenses, index_str, value);
+}
+
+fn process_removal(lens_op: &str, hashmap: &mut HashMap<usize, Vec<Lens>>) {
+    let parts: Vec<&str> = lens_op.split('-').collect();
+    if parts.len() == 2 {
+        let index = hash(parts[0]);
+        let index_str = parts[0].to_string();
+        if let Some(lenses) = hashmap.get_mut(&index) {
+            remove_lens_if_exists(lenses, &index_str);
+        }
+    }
+}
+
+fn update_or_insert_lens(lenses: &mut Vec<Lens>, label: String, focal_length: usize) {
+    if let Some(lens) = lenses.iter_mut().find(|lens| lens.label == label) {
+        lens.focal_length = focal_length;
+    } else {
+        lenses.push(Lens::new(label, focal_length));
+    }
+}
+
+fn remove_lens_if_exists(lenses: &mut Vec<Lens>, label: &str) {
+    if let Some(pos) = lenses.iter().position(|lens| lens.label == label) {
+        lenses.remove(pos);
+    }
+}
+
+fn calculate_result(hashmap: &HashMap<usize, Vec<Lens>>) -> usize {
+    hashmap.iter().fold(0, |acc, (box_n, lenses)| {
+        acc + lenses
+            .iter()
+            .enumerate()
+            .fold(0, |acc, (index, lens)| acc + (box_n + 1) * (index + 1) * lens.focal_length)
+    })
 }
 
 fn load_data(file: &str) -> Vec<String> {
-    //load file into string
-    let contents = fs::read_to_string(file)
-        .expect("Something went wrong reading the file");
-    // split string into vector of strings by comma
-    let data: Vec<String> = contents.split(",")
+    fs::read_to_string(file)
+        .expect("Something went wrong reading the file")
+        .split(',')
         .map(|s| s.to_string())
-        .collect();
-    data
-
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
-    use std::fs;
     use super::*;
 
     #[test]
     fn test_hash() {
-        assert_eq!(hash("HASH"),52);
+        assert_eq!(hash("HASH"), 52);
     }
+
     #[test]
     fn test_load_data() {
         let data: Vec<String> = load_data("test.txt");
-        assert_eq!(data.len(), 11);
+        assert_eq!(data.len(), 11); // Adjust the expected length according to your test file content
     }
 
     #[test]
-
-    fn can_build_map(){
+    fn test_calculate_lenses() {
         let data: Vec<String> = load_data("test.txt");
-        let hashmap : HashMap<usize, HashMap<String, usize>>;
-        for lens_op in data{
-            if lens_op.contains(r"="){
-                println!("add_op: {}", lens_op);
-                let parts:Vec<Option(String)> = lens_op.split(r"=").collect();
-                let index_s:String = Some(parts[0]).to_string().unwrap();
-                let index = hash(&index_s);
-                let value:usize = Some(parts[1]).to_string().unwrap().parse();
-                let maybe_lenses = hashmap.get(&index);
-                match maybe_lenses{
-                    Some(mut lenses) =>{
-                        lenses.add(index_s, value)
-                    }
-                    _ =>{
-                        let lenses:HashMap<String, usize> = HashMap::new();
-                        lenses.add(index_s, value);
-                        hashmap.add(index, lenses);
-                    }
-                }
-            }
-            else if lens_op.contains(r"-"){
-                println!("removeop_op: {}", lens_op);
-                let parts = lens_op.split(r"-").collect();
-                let index_s:String = Some(parts[0]).to_string().unwrap();
-                let index = hash(&index_s);
-                let value:usize = Some(parts[1]).to_string().unwrap().parse();
-                let maybe_lenses = hashmap.get(&index);
-                match maybe_lenses{
-                    Some (mut lenses) =>{
-                        lenses.remove(&index_s)
-                    }
-                    _ => {}
-                }
-            }
-        }
+        assert_eq!(calculate_lenses(&data), 145);
     }
-
 }
