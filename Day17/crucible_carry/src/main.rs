@@ -4,7 +4,7 @@ use std::fs;
 
 fn main() {
 
-    let grid = load_character_grid("test.txt");
+    let grid = load_character_grid("input.txt");
     let least_enery_loss = calculate_least_energy_loss(&grid);
     println!("least energy loss: {}", least_enery_loss);
 }
@@ -37,17 +37,20 @@ struct Node {
 
 
 fn calculate_least_energy_loss(grid: &Vec<Vec<char>>) -> isize {
-    println!("starting");
     let mut heap:BinaryHeap<(isize,Node)> = BinaryHeap::new();
     let mut visited: HashSet<Node> = HashSet::new();
     heap.push((0,Node { row: 0, col: 0, dir: Direction::None, indir: 0}));
 
     loop {
         let (heat_loss, head) = heap.pop().unwrap();
-        println ! ("arrived at {} {} with hl {} heading: {:?}",  head.row, head.col,heat_loss, head.dir);
+        println ! ("arrived at {} {} with hl {} heading: {:?}, with indir of {}",  head.row, head.col,heat_loss, head.dir, head.indir);
         if  head.row == grid.len() as isize - 1 && head.col == grid[0].len() as isize - 1 {
             return heat_loss*-1;
         }
+        if visited.contains(&head) {
+            continue;
+        }
+
         visited.insert(head);
         [Direction::Up, Direction::Down, Direction::Left, Direction::Right]
             .iter()
@@ -70,12 +73,24 @@ fn calculate_least_energy_loss(grid: &Vec<Vec<char>>) -> isize {
                         let new_indir = if head.dir == *dir { head.indir + 1 } else { 1 };
                         if new_indir <= 3 {
                             let new_node = Node { row, col, dir: *dir, indir: new_indir };
-                            if !visited.contains(&new_node) {
-                                heap.push((new_heat_loss, new_node));
-                            }
+
+                            heap.push((new_heat_loss, new_node));
+
                         }
                     }
                 }
             });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_least_energy_loss() {
+        let grid = load_character_grid("test.txt");
+        let least_enery_loss = calculate_least_energy_loss(&grid);
+        assert_eq!(least_enery_loss,102);
     }
 }
