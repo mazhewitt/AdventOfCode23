@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 
 
@@ -12,10 +13,13 @@ fn load_character_grid(filename: &str) -> Vec<Vec<char>> {
 
 fn main() {
     let grid = transpose(&load_character_grid("input.txt"));
-
+    let part2_grid = grid.clone();
     let score = calculate_weight(grid);
 
     println!("score: {}", score);
+
+    let part2_score = calculate_score_after_billion_rotations(part2_grid);
+    println!("part 2 score: {}", part2_score-1);
 
 }
 fn transpose(matrix: &Vec<Vec<char>>) -> Vec<Vec<char>> {
@@ -40,6 +44,7 @@ fn transpose(matrix: &Vec<Vec<char>>) -> Vec<Vec<char>> {
 fn calculate_weight(grid: Vec<Vec<char>>) -> usize {
     let size = grid.len();
     let tilted_grid = tilt_grid_in_place(&grid);
+    print_grid(&tilted_grid);
     calculate_score(size, &tilted_grid)
 }
 
@@ -58,15 +63,15 @@ fn calculate_score(size: usize, tilted_grid: &Vec<Vec<char>>) -> usize {
 fn tilt_cycle(grid: &Vec<Vec<char>>) -> Vec<Vec<char>> {
     let mut new_grid = grid.clone();
 
-    for _ in 0..4 {
-        new_grid = rotate_90_degrees_clockwise(&new_grid);
+    for _ in 1..=4 {
         new_grid = tilt_grid_in_place(&new_grid);
+        new_grid = rotate_90_degrees_counterclockwise(&new_grid);
     }
-
     new_grid
 }
 
 fn rotate_90_degrees_clockwise(matrix: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    println!("rotating");
     let n = matrix.len();
     let mut rotated = vec![vec![' '; n]; n];
 
@@ -79,8 +84,21 @@ fn rotate_90_degrees_clockwise(matrix: &Vec<Vec<char>>) -> Vec<Vec<char>> {
     rotated
 }
 
+fn rotate_90_degrees_counterclockwise(matrix: &Vec<Vec<char>>) -> Vec<Vec<char>> {
+    let n = matrix.len();
+    let mut rotated = vec![vec![' '; n]; n];
+
+    for i in 0..n {
+        for j in 0..n {
+            rotated[n - j - 1][i] = matrix[i][j];
+        }
+    }
+
+    rotated
+}
+
 fn tilt_grid_in_place(grid: &Vec<Vec<char>>) -> Vec<Vec<char>> {
-    grid.iter().map(|row| {
+    let tilted:Vec<Vec<char>> = grid.iter().map(|row| {
         let mut parts: Vec<Vec<char>> = row.split(|&ch| ch == '#')
             .map(|part| {
                 let mut chars: Vec<char> = part.to_vec();
@@ -89,30 +107,65 @@ fn tilt_grid_in_place(grid: &Vec<Vec<char>>) -> Vec<Vec<char>> {
             })
             .collect();
 
-        if parts.len() > 1 {
-            parts.insert(1, vec!['#']);
+        // join the parts back together with a # in between
+        let mut new_row = Vec::new();
+        for part in parts.drain(..) {
+            new_row.extend(part);
+            new_row.push('#');
         }
+        new_row.pop(); // remove the last #
+        new_row
+    }).collect();
 
-        parts.concat()
-    }).collect()
+    assert_eq!(tilted.len(), grid.len());
+    assert_eq!(tilted[0].len(), grid[0].len());
+    tilted
 }
 
 fn print_grid(grid: &Vec<Vec<char>>) {
-    for row in grid {
-        for &ch in row {
+    let transposed_grid = transpose(&grid);
+    for row in transposed_grid {
+        for ch in row {
             print!("{}", ch);
         }
         println!();
     }
+    println!();
 }
 
-// ... rest of your code ...
+fn calculate_score_after_billion_rotations(mut grid: Vec<Vec<char>>) -> usize {
+    let mut seen_grids: HashMap<Vec<Vec<char>>, usize> = HashMap::new();
+    let score;
+    let mut cycle_count = 0;
+    let target = 1_000_000_000;
+
+    loop {
+        cycle_count += 1;
+        let new_grid = tilt_cycle(&grid);
+
+        if let Some(&first_seen_cycle) = seen_grids.get(&new_grid) {
+            // Cycle detected
+            let cycle_length = cycle_count - first_seen_cycle;
+            let remaining_cycles = (target - cycle_count) % cycle_length;
+            // Skip cycles
+            for _ in 0..remaining_cycles {
+                cycle_count += 1;
+                grid = tilt_cycle(&grid);
+            }
+            score = calculate_score(grid.len(), &grid);
+            break;
+        } else {
+            // Store grid state and cycle count
+            seen_grids.insert(new_grid.clone(), cycle_count);
+            grid = new_grid;
+        }
+    }
+    score
+}
 
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-    use std::ops::Index;
     use super::*;
     #[test]
     fn test_load_character_grid() {
@@ -125,52 +178,45 @@ mod tests {
 
     #[test]
     fn weight_after_many_rotations() {
-        let mut grid = transpose(&load_character_grid("test.txt"));
-        let mut seen_grids: HashSet<Vec<Vec<char>>> = HashSet::new();
-        let mut score = 0;
-        let mut cycle_count = 0;
-        let mut all_grids: Vec<Vec<Vec<char>>> = Vec::new();
-        loop{
-            cycle_count += 1;
-            let new_gird = tilt_cycle(&grid);
-            if seen_grids.contains(&new_gird) {
-                let first = all_grids.iter().position(|x| *x == new_gird).unwrap();
-                let score_grid = &all_grids[(1000000000 - first) % (cycle_count - first) + first];
-                score = calculate_score(10,score_grid);
-                break;
-            }
-            seen_grids.insert(new_gird.clone());
-            all_grids.push(new_gird.clone());
-            grid = new_gird;
-        }
 
+        let  grid = transpose(&load_character_grid("test.txt"));
+        let score = calculate_score_after_billion_rotations(grid);
         assert_eq!(score, 64);
+
+
+
     }
 
     #[test]
     fn test_1_cycle(){
         let grid = transpose(&load_character_grid("test.txt"));
         let tilted_grid = tilt_cycle(&grid);
-        let transposed_grid = transpose(&tilted_grid);
-        print_grid(&transposed_grid);
+        print_grid(&tilted_grid);
         let two_cycle = tilt_cycle(&tilted_grid);
-        let transposed_2_grid = transpose(&two_cycle);
-        println!();
         println!("2 cycle");
-        print_grid(&transposed_2_grid);
+        print_grid(&two_cycle);
         let three_cycle = tilt_cycle(&two_cycle);
-        let transposed_3_grid = transpose(&three_cycle);
-        println!();
         println!("3 cycle");
-        print_grid(&transposed_3_grid);
+        print_grid(&three_cycle);
         calculate_score(10,  &grid);
     }
-    #[cfg(test)]
-    mod tests {
-        use super::*;
+    #[test]
+    fn test_rotate_90_degrees_clockwise() {
+        let matrix = vec![
+            vec!['1', '2', '3'],
+            vec!['4', '5', '6'],
+            vec!['7', '8', '9'],
+        ];
 
+        let expected_rotated_matrix = vec![
+            vec!['7', '4', '1'],
+            vec!['8', '5', '2'],
+            vec!['9', '6', '3'],
+        ];
 
+        let rotated_matrix = rotate_90_degrees_clockwise(&matrix);
+
+        assert_eq!(rotated_matrix, expected_rotated_matrix);
     }
-
 
 }
