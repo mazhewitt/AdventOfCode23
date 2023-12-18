@@ -11,9 +11,7 @@ fn main() {
     let path = build_path(&grid);
     let furthest_distance = (path.len() + (path.len() % 2)) / 2;
     println!("Furthest distance: {}", furthest_distance);
-    let polygon = create_polygon(&path);
-    let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
-    println!("Enclosed tiles: {}", enclosed_tiles);
+
 
 }
 
@@ -25,149 +23,189 @@ fn load_character_grid(filename: &str) -> Vec<Vec<char>> {
         .collect()
 }
 
-fn find_connected(node: char, node_pos: (usize,usize), grid: &Vec<Vec<char>>) -> Vec<usize, usize> {
-    let path = vec!([]);
-
+fn find_connected(node_pos: (usize,usize), grid: &Vec<Vec<char>>) -> Vec<(usize, usize)> {
+    let mut path:Vec <(usize, usize)> = Vec::new();
+    let (r, c) = node_pos;
+    let node = grid[r][c];
     match node {
         'S' => {
             //look north
-            if (node_pos.0) > 0{
-                match grid[node_pos.0 -1][node_pos] {
-                    '|' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
+            if r > 0 {
+                match grid[r -1][c] {
+                    '|' | '7' | 'F' | 'S' => path.push((r -1, c)),
                     _ => {}
                 }
             }
             //look south
-            if (node_pos.0) < grid[0].len(){
-                match grid[node_pos.0 +1][node_pos] {
-                    '|' | 'J' | 'L' => path.push((node_pos.0 +1, node_pos));
+            if r < grid[0].len(){
+                match grid[r +1][c] {
+                    '|' | 'J' | 'L'| 'S' => path.push((r +1, c)),
                     _ => {}
                 }
             }
             //look west
-            if (node_pos.1) > 0{
-                match grid[node_pos.1 -1][node_pos] {
-                    '-' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
+            if c > 0{
+                match grid[r][c-1] {
+                    '-' | '7' | 'F'| 'S' => path.push((r, c -1)),
                     _ => {}
                 }
             }
             // look east
-            if (node_pos.1) < grid.len(){
-                match grid[node_pos.1 +1][node_pos] {
-                    '-' | 'J' | '7' => path.push((node_pos.0 +1, node_pos));
+            if (c) < grid.len(){
+                match grid[r][c+1] {
+                    '-' | 'J' | '7'| 'S' => path.push((r, c+1)),
                     _ => {}
                 }
             }
         }
         '|' => {
             //look north
-            if (node_pos.0) > 0{
-                match grid[node_pos.0 -1][node_pos] {
-                    '|' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
+            if (r) > 0{
+                match grid[r -1][c] {
+                    '|' | '7' | 'F'| 'S' => path.push((r -1, c)),
                     _ => {}
                 }
             }
             //look south
-            if (node_pos.0) < grid[0].len(){
-                match grid[node_pos.0 +1][node_pos] {
-                    '|' | 'J' | 'L' => path.push((node_pos.0 +1, node_pos));
+            if (r) < grid[0].len(){
+                match grid[r +1][c] {
+                    '|' | 'J' | 'L'| 'S' => path.push((r +1, c)),
                     _ => {}
                 }
             }
         }
         '-' => {
             //look west
-            if (node_pos.1) > 0{
-                match grid[node_pos.1 -1][node_pos] {
-                    '-' | 'L' | 'F' => path.push((node_pos.0 -1, node_pos));
+            if (c) > 0{
+                match grid[r][c-1] {
+                    '-' | 'L' | 'F'| 'S' => path.push((r, c -1)),
                     _ => {}
                 }
             }
             // look east
-            if (node_pos.1) < grid.len(){
-                match grid[node_pos.1 +1][node_pos] {
-                    '-' | 'J' | '7' => path.push((node_pos.1 +1, node_pos));
+            if (c) < grid.len(){
+                match grid[r][c+1] {
+                    '-' | 'J' | '7'| 'S' => path.push((r, c +1)),
                     _ => {}
                 }
             }
         }
         '7' => {
-            //look north
-            if (node_pos.0) > 0{
-                match grid[node_pos.0 -1][node_pos] {
-                    '|' | '7' | 'F' => path.push((node_pos.0 -1, node_pos));
+            //look south
+            if (r) < grid[0].len(){
+                match grid[r +1][c] {
+                    '|' | 'J' | 'L'| 'S' => path.push((r +1, c)),
                     _ => {}
                 }
             }
-            // look east
-            if (node_pos.1) < grid.len(){
-                match grid[node_pos.1 +1][node_pos] {
-                    '-' | 'J' | '7' => path.push((node_pos.0 +1, node_pos));
+            //look west
+            if (c) > 0{
+                match grid[r][c-1] {
+                    '-' | 'L' | 'F'| 'S' => path.push((r, c -1)),
                     _ => {}
                 }
             }
         }
         'F' => {
             //look south
-            if (node_pos.0) < grid[0].len(){
-                match grid[node_pos.0 +1][node_pos] {
-                    '|' | 'J' | 'L' => path.push((node_pos.1 +1, node_pos));
+            if (r) < grid[0].len(){
+                match grid[r +1][c] {
+                    '|' | 'J' | 'L'| 'S' => path.push((r +1, c)),
                     _ => {}
                 }
             }
             // look east
-            if (node_pos.1) < grid.len(){
-                match grid[node_pos.1 +1][node_pos] {
-                    '-' | 'J' | '7' => path.push((node_pos.0 +1, node_pos));
+            if (c) < grid.len(){
+                match grid[r][c+1] {
+                    '-' | 'J' | '7'| 'S' => path.push((r, c +1)),
+                    _ => {}
+                }
+            }
+        }
+        'L' => {
+            //look north
+            if (r) > 0{
+                match grid[r -1][c] {
+                    '|' | '7' | 'F'| 'S' => path.push((r -1, c)),
+                    _ => {}
+                }
+            }
+            // look east
+            if (c) < grid.len(){
+                match grid[r][c+1] {
+                    '-' | 'J' | '7'| 'S' => path.push((r, c +1)),
+                    _ => {}
+                }
+            }
+        }
+        'J' => {
+            //look north
+            if (r) > 0{
+                match grid[r -1][c] {
+                    '|' | '7' | 'F'| 'S' => path.push((r -1, c)),
+                    _ => {}
+                }
+            }
+            //look west
+            if (c) > 0{
+                match grid[r][c-1] {
+                    '-' | 'L' | 'F'| 'S' => path.push((r, c -1)),
                     _ => {}
                 }
             }
         }
         _ => {}
     }
-
+    //println!("Node: {:?}, {} has {} connections", node_pos, grid[r][c],  path.len());
+    assert_eq!(path.len(), 2);
+    path
 }
 
 
-fn build_path(grid: &Vec<Vec<char>>) -> Vec<usize, usize> {
+fn build_path(grid: &Vec<Vec<char>>) -> Vec<(usize, usize)> {
+    let start = find_start_position(grid).expect("Start position not found");
+    let mut visited = HashSet::new();
+    let mut path = Vec::new();
 
+    dfs(start, &mut visited, &mut path, grid);
+    path
 }
 
-
-fn find_index_of_s(grid: &Vec<Vec<char>>) -> Option<usize, usize> {
-    let width = grid.len();
-
-    for (i, col) in grid.iter().enumerate() {
-        if let Some(j) = row.iter().position(|&c| c == 'S') {
-            return Some(i * width +j);
-        }
+fn dfs(
+    pos: (usize, usize),
+    visited: &mut HashSet<(usize, usize)>,
+    path: &mut Vec<(usize, usize)>,
+    grid: &Vec<Vec<char>>
+) {
+    if visited.contains(&pos) {
+        return;
     }
 
-    None // Return None if 'S' is not found in the grid
+    visited.insert(pos);
+    path.push(pos);
+
+    let connected_nodes = find_connected(pos, grid);
+    for next_pos in connected_nodes {
+        dfs(next_pos, visited, path, grid);
+    }
 }
 
-
-
-fn create_polygon(vertices: &Vec<Vec<usize,usize>>) -> Polygon<f64> {
-    Polygon::new(vertices.clone().into(), vec![])
-}
-
-
-fn count_enclosed_tiles(grid: &Vec<Vec<char>>, polygon: &Polygon<f64>) -> usize {
-    let width = grid[0].len();
-    let height = grid.len();
-    let mut count = 0;
-
-    for y in 0..height {
-        for x in 0..width {
-            if grid[y][x] != '.' && polygon.contains(&Point::new(x as f64, y as f64)) {
-                count += 1;
+fn find_start_position(grid: &Vec<Vec<char>>) -> Option<(usize, usize)> {
+    for (i, row) in grid.iter().enumerate() {
+        for (j, &cell) in row.iter().enumerate() {
+            if cell == 'S' {
+                return Some((i, j));
             }
         }
     }
-
-    count
+    None
 }
+
+
+
+
+
+
 
 
 
