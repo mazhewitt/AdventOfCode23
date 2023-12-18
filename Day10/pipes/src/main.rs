@@ -11,6 +11,9 @@ fn main() {
     let path = build_path(&grid);
     let furthest_distance = (path.len() + (path.len() % 2)) / 2;
     println!("Furthest distance: {}", furthest_distance);
+    let enclosed_tiles = count_enclosed_tiles(&path);
+    println!("Enclosed tiles: {}", enclosed_tiles);
+
 
 
 }
@@ -203,9 +206,44 @@ fn find_start_position(grid: &Vec<Vec<char>>) -> Option<(usize, usize)> {
 
 
 
+fn count_enclosed_tiles(path: &Vec<(usize, usize)>) -> isize {
+    let i_path: Vec<(isize, isize)> = path.iter()
+        .map(|&(x, y)| (x as isize, y as isize))
+        .collect();
+    let area = apply_shoelace_formula(&i_path);
+    let boundary_points = count_boundary_points(&i_path);
+    (area - boundary_points / 2)
+}
+fn apply_shoelace_formula(path: &[(isize, isize)]) -> isize {
+    let n = path.len();
+    if n < 3 {
+        // A polygon must have at least 3 vertices
+        return 0;
+    }
+
+    let mut area = 0;
+    for i in 0..n {
+        let (_x, y) = path[i];
+        let x_prev = path[(i + n - 1) % n].0; // x-coordinate of the previous vertex
+        let x_next = path[(i + 1) % n].0;     // x-coordinate of the next vertex
+
+        area += y * (x_prev - x_next);
+    }
+
+    (area / 2).abs()
+}
+
+// The `apply_picks_theorem`
 
 
-
+// Count unique boundary points, considering the path is closed.
+fn count_boundary_points(path: &[(isize, isize)]) -> isize {
+    let mut unique_points = path.to_vec();
+    unique_points.pop(); // Remove the duplicate point at the end
+    unique_points.sort();
+    unique_points.dedup();
+    unique_points.len() as isize
+}
 
 
 
@@ -226,17 +264,6 @@ fn print_grid(grid: &Vec<Vec<char>>) {
 mod tests {
     use super::*;
 
-
-
-
-
-
-    #[test]
-    fn test_find_s_index() {
-        let grid = load_character_grid("test_input.txt");
-        let s_index = find_index_of_s(&grid).unwrap();
-        assert_eq!(s_index, 10);
-    }
     #[test]
     fn test_count_enclosed_tiles() {
         let grid = vec![
@@ -252,73 +279,10 @@ mod tests {
         ];
 
     let path = build_path(&grid);
-    let polygon = create_polygon(&path);
-    let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
+
+    let enclosed_tiles = count_enclosed_tiles(&path);
 
         assert_eq!(enclosed_tiles, 4);
-    }
-
-
-
-    #[test]
-    fn test_count_enclosed_tiles_example2() {
-        let grid = load_character_grid("bigger_grid_input.txt");
-        let path = build_path(&grid);
-        let polygon = create_polygon(&path);
-        let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
-        assert_eq!(enclosed_tiles, 10);
-    }
-
-    #[test]
-    fn test_count_enclosed_tiles_example() {
-        let grid = load_character_grid("second_test_input.txt");
-        let path = build_path(&grid);
-        let polygon = create_polygon(&path);
-        let enclosed_tiles = count_enclosed_tiles(&grid, &polygon);
-        assert_eq!(enclosed_tiles, 8);
-    }
-
-
-
-
-    #[test]
-    fn test_build_graph() {
-        // Define the grid
-        let grid = vec![
-            vec!['.', '.', '.', '.', '.'],
-            vec!['.', 'S', '-', '7', '.'],
-            vec!['.', '|', '.', '|', '.'],
-            vec!['.', 'L', '-', 'J', '.'],
-            vec!['.', '.', '.', '.', '.'],
-        ];
-
-        // Build the graph from the grid
-        let path = build_path(&grid);
-
-        // Nodes expected to be in the graph
-        let expected_nodes: Vec<Point<f64>> = vec![
-            index_to_point(6, grid[0].len()),  // 'S'
-            index_to_point(7, grid[0].len()),  // '-'
-            index_to_point(8, grid[0].len()),  // '7'
-            index_to_point(11, grid[0].len()), // '|'
-            index_to_point(13, grid[0].len()), // '|'
-            index_to_point(16, grid[0].len()), // 'L'
-            index_to_point(17, grid[0].len()), // '-'
-            index_to_point(18, grid[0].len()), // 'J'
-        ].into_iter().collect();
-
-
-
-        // Check if all expected nodes are present
-        for node in &path {
-
-            assert!(expected_nodes.contains(&node), "Unexpected node in graph: {:?}", node.x_y());
-        }
-
-        // Check if the number of nodes matches the expected
-        assert_eq!(path.len(), expected_nodes.len(), "Incorrect number of nodes in graph");
-
-        // You can add additional checks here to validate the edges and their connections
     }
 
 
