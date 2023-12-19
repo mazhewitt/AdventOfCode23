@@ -10,7 +10,7 @@ struct WorkFlow {
 }
 #[derive(Debug, PartialEq)]
 struct Rule {
-    item: String,
+    item: char,
     operator: char,
     value: usize,
     action: String
@@ -20,7 +20,7 @@ fn parse_rule(rule_str: &str) -> Result<Rule, String> {
     let rule_matcher = Regex::new(r"^(\w)([<>])(\d+):(\w+)$").expect("Invalid regex");
     if let Some(captures) = rule_matcher.captures(rule_str) {
         Ok(Rule {
-            item: captures.get(1).unwrap().as_str().to_string(),
+            item: captures.get(1).unwrap().as_str().chars().next().unwrap(),
             operator: captures.get(2).unwrap().as_str().chars().next().unwrap(),
             value: captures.get(3).unwrap().as_str().parse::<usize>().map_err(|e| e.to_string())?,
             action: captures.get(4).unwrap().as_str().to_string(),
@@ -102,7 +102,7 @@ fn process_part_through_workflows(wf_new:&str, workflows: &HashMap<String, WorkF
 
 fn process_workflow(workflow: &WorkFlow, part: &Vec<(char, usize)>) -> String {
     for rule in &workflow.rules {
-        if let Some(&(_, part_value)) = part.iter().find(|&&(item, _)| item == rule.item.chars().next().unwrap()) {
+        if let Some(&(_, part_value)) = part.iter().find(|&&(item, _)| item == rule.item) {
             let condition_met = match rule.operator {
                 '>' => part_value > rule.value as usize,
                 '<' => part_value < rule.value as usize,
@@ -136,13 +136,13 @@ fn process_workflow_rules(workflow_name: &str, workflows: &HashMap<String, WorkF
     let mut total_combinations = 0;
 
     for rule in &workflow.rules {
-        let (lower_bound, upper_bound) = ranges[&rule.item.chars().next().unwrap()];
+        let (lower_bound, upper_bound) = ranges[&rule.item];
         let (true_range, false_range) = determine_rule_ranges(rule, lower_bound, upper_bound);
-        ranges.insert(rule.item.parse().unwrap(), true_range);
+        ranges.insert(rule.item, true_range);
         // Recursive call with the range where the rule's condition is true
         total_combinations += calculate_accepted_combinations(&rule.action, workflows, ranges.clone());
         // Update the ranges map with the false range for the next iteration
-        ranges.insert(rule.item.parse().unwrap(), false_range);
+        ranges.insert(rule.item, false_range);
     }
 
     // Include combinations from the default rule of the workflow
@@ -172,19 +172,19 @@ mod tests {
             name: "ex".to_string(),
             rules: vec![
                 Rule {
-                    item: "x".to_string(),
+                    item: 'x',
                     operator: '>',
                     value: 10,
                     action: "one".to_string(),
                 },
                 Rule {
-                    item: "m".to_string(),
+                    item: 'm',
                     operator: '<',
                     value: 20,
                     action: "two".to_string(),
                 },
                 Rule {
-                    item: "a".to_string(),
+                    item: 'a',
                     operator: '>',
                     value: 30,
                     action: "R".to_string(),
