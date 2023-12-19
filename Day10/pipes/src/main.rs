@@ -1,7 +1,7 @@
 use std::collections::{ HashSet};
 use std::fs;
-use geo::algorithm::contains::Contains;
-use geo::{Polygon, Point};
+
+
 
 
 
@@ -30,6 +30,7 @@ fn find_connected(node_pos: (usize,usize), grid: &Vec<Vec<char>>) -> Vec<(usize,
     let mut path:Vec <(usize, usize)> = Vec::new();
     let (r, c) = node_pos;
     let node = grid[r][c];
+
     match node {
         'S' => {
             //look north
@@ -212,7 +213,7 @@ fn count_enclosed_tiles(path: &Vec<(usize, usize)>) -> isize {
         .collect();
     let area = apply_shoelace_formula(&i_path);
     let boundary_points = count_boundary_points(&i_path);
-    (area - boundary_points / 2)
+    area - boundary_points / 2
 }
 fn apply_shoelace_formula(path: &[(isize, isize)]) -> isize {
     let n = path.len();
@@ -248,7 +249,7 @@ fn count_boundary_points(path: &[(isize, isize)]) -> isize {
 
 
 
-fn print_grid(grid: &Vec<Vec<char>>) {
+fn _print_grid(grid: &Vec<Vec<char>>) {
     println!();
     for row in grid {
         for &cell in row {
