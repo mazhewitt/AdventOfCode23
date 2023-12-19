@@ -117,36 +117,48 @@ fn process_workflow(workflow: &WorkFlow, part: &Vec<(char, usize)>) -> String {
     workflow.default.clone()
 }
 
-fn calculate_accepted_combinations(workflow_name: &str, workflows: &HashMap<String, WorkFlow>, mut ranges: HashMap<char, (usize, usize)>) -> usize {
-    match workflow_name {
-        "R" => 0,
-        "A" => ranges.values().map(|&(lo, hi)| hi - lo + 1).product(),
-        _ => {
-            let workflow = &workflows[workflow_name];
-            let mut total = 0;
-            for rule in &workflow.rules {
-                let (lo, hi) = ranges[&rule.item.chars().next().unwrap()];
-                let (t_range, f_range) = if rule.operator == '<' {
-                    ((lo, usize::min(rule.value - 1, hi)), (usize::max(rule.value, lo), hi))
-                } else {
-                    ((usize::max(rule.value + 1, lo), hi), (lo, usize::min(rule.value, hi)))
-                };
-
-                if t_range.0 <= t_range.1 {
-                    let mut copy = ranges.clone();
-                    copy.insert(rule.item.parse().unwrap(), t_range);
-                    total += calculate_accepted_combinations(&rule.action,  workflows, copy);
-                }
-                if f_range.0 <= f_range.1 {
-                    ranges.insert(rule.item.parse().unwrap(), f_range);
-                } else {
-                    break;
-                }
-            }
-            total + calculate_accepted_combinations(&workflow.default,  workflows, ranges)
-        }
+fn calculate_accepted_combinations(current_workflow: &str, workflows: &HashMap<String, WorkFlow>, ranges: HashMap<char, (usize, usize)>) -> usize {
+    match current_workflow {
+        "R" => 0,  // No combinations are valid if the workflow leads to rejection
+        "A" => calculate_product_of_ranges(&ranges), // Calculate product for accepted path
+        _ => process_workflow_rules(current_workflow, workflows, ranges),
     }
 }
+
+fn calculate_product_of_ranges(ranges: &HashMap<char, (usize, usize)>) -> usize {
+    ranges.values()
+        .map(|&(low, high)| high - low + 1)
+        .product()
+}
+
+fn process_workflow_rules(workflow_name: &str, workflows: &HashMap<String, WorkFlow>, mut ranges: HashMap<char, (usize, usize)>) -> usize {
+    let workflow = &workflows[workflow_name];
+    let mut total_combinations = 0;
+
+    for rule in &workflow.rules {
+        let (lower_bound, upper_bound) = ranges[&rule.item.chars().next().unwrap()];
+        let (true_range, false_range) = determine_rule_ranges(rule, lower_bound, upper_bound);
+        ranges.insert(rule.item.parse().unwrap(), true_range);
+        // Recursive call with the range where the rule's condition is true
+        total_combinations += calculate_accepted_combinations(&rule.action, workflows, ranges.clone());
+        // Update the ranges map with the false range for the next iteration
+        ranges.insert(rule.item.parse().unwrap(), false_range);
+    }
+
+    // Include combinations from the default rule of the workflow
+    total_combinations + calculate_accepted_combinations(&workflow.default, workflows, ranges)
+}
+
+fn determine_rule_ranges(rule: &Rule, lower_bound: usize, upper_bound: usize) -> ((usize, usize), (usize, usize)) {
+    if rule.operator == '<' {
+        ((lower_bound, usize::min(rule.value - 1, upper_bound)), (usize::max(rule.value, lower_bound), upper_bound))
+    } else {
+        ((usize::max(rule.value + 1, lower_bound), upper_bound), (lower_bound, usize::min(rule.value, upper_bound)))
+    }
+}
+
+
+
 
 
 #[cfg(test)]
