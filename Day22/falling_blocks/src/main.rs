@@ -48,6 +48,7 @@ impl Brick {
     }
     fn supports(&self, other: &Brick) -> bool {
         self.overlaps_x_y(other) && self.bottom_z + self.z_height == other.bottom_z
+    }
 }
 
 fn parse_brick(brick_str: &str) -> Brick {
