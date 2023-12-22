@@ -42,6 +42,12 @@ impl Brick {
 
         x_overlap && y_overlap && z_overlap
     }
+    fn overlaps_x_y(&self, other: &Brick) -> bool {
+        self.left_x >= other.left_x && self.left_x + self.x_width <= other.left_x + other.x_width &&
+            self.front_y >= other.front_y && self.front_y + self.y_depth <= other.front_y + other.y_depth
+    }
+    fn supports(&self, other: &Brick) -> bool {
+        self.overlaps_x_y(other) && self.bottom_z + self.z_height == other.bottom_z
 }
 
 fn parse_brick(brick_str: &str) -> Brick {
@@ -93,10 +99,7 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
 
     // Check against each fallen brick to find the highest position it can fall to
     for fallen_brick in fallen.iter() {
-        if (brick.left_x < fallen_brick.left_x + fallen_brick.x_width) && // Brick starts before fallen_brick ends in x
-            (fallen_brick.left_x < brick.left_x + brick.x_width) && // Fallen_brick starts before brick ends in x
-            (brick.front_y < fallen_brick.front_y + fallen_brick.y_depth) && // Brick starts before fallen_brick ends in y
-            (fallen_brick.front_y < brick.front_y + brick.y_depth) {
+        if brick.overlaps_x_y(fallen_brick) {
             // Calculate the potential new z position (just above the fallen brick)
             let potential_new_z = fallen_brick.bottom_z + fallen_brick.z_height;
             if potential_new_z < brick.bottom_z && potential_new_z > highest_supported_z {
@@ -104,7 +107,6 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
             }
         }
     }
-
     // Create a new brick with the new bottom_z position
     let mut new_position = brick.clone();
     new_position.bottom_z = highest_supported_z;
@@ -113,9 +115,7 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-
     #[test]
     fn test_parse_brick(){
         let test_brick_str = "2,2,2~2,2,2";
@@ -135,9 +135,6 @@ mod tests {
     #[test]
     fn test_parse_test_file(){
         let filename = "test.txt";
-        // load file
-        // iterate thought he lines
-        // parse each line
         let file = File::open(filename).expect("file not found");
         let reader = BufReader::new(file);
         let mut brick_set: HashSet<Brick> = HashSet::new();
@@ -147,7 +144,6 @@ mod tests {
             add_brick(&mut brick_set, brick);
         }
         assert_eq!(brick_set.len(), 7);
-
     }
 
 
