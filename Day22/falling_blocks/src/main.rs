@@ -232,7 +232,74 @@ mod tests {
         };
         assert!(brick1.overlaps(&brick2));
     }
+    #[test]
+    fn brick_2_lands_on_brick_1() {
+        let brick1 = Brick {
+            left_x: 1,
+            front_y: 1,
+            bottom_z: 1,
+            x_width: 3,
+            z_height: 3,
+            y_depth: 3,
+        };
+        let brick2 = Brick {
+            left_x: 2,
+            front_y: 2,
+            bottom_z: 9,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 1,
+        };
+        let bricks = vec![brick2, brick1];
+        let mut fallen = simulate_fall(bricks);
+        let f_brick1 = fallen.pop_first().unwrap();
+        let f_brick2 = fallen.pop_first().unwrap();
+        assert_eq!(f_brick1.bottom_z, 1);
+        assert_eq!(f_brick2.bottom_z, 4);
 
+
+    }
+    #[test]
+    fn brick_2_lands_next_to_brick_1() {
+        let brick1 = Brick {
+            left_x: 1,
+            front_y: 1,
+            bottom_z: 1,
+            x_width: 3,
+            z_height: 3,
+            y_depth: 3,
+        };
+        let brick2 = Brick {
+            left_x: 4,
+            front_y: 2,
+            bottom_z: 9,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 1,
+        };
+        let bricks = vec![brick1, brick2];
+        let mut fallen = simulate_fall(bricks);
+        let f_brick1 = fallen.pop_first().unwrap();
+        let f_brick2 = fallen.pop_first().unwrap();
+        assert_eq!(f_brick1.bottom_z, 1);
+        assert_eq!(f_brick2.bottom_z, 1);
+
+
+    }
+    #[test]
+    fn test_all_bricks(){
+        let filename = "test.txt";
+        let file = File::open(filename).expect("file not found");
+        let reader = BufReader::new(file);
+        let mut bricks: Vec<Brick> = Vec::new();
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let brick = parse_brick(&line);
+            bricks.push(brick);
+        }
+        let fallen = simulate_fall(bricks);
+        assert_eq!(fallen.len(), 7);
+    }
 
 
 }
