@@ -8,6 +8,7 @@ fn main() {
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone)]
 struct Brick {
+    reference: String,
     left_x: usize,
     front_y: usize,
     bottom_z: usize,
@@ -36,16 +37,19 @@ impl Ord for Brick {
 
 impl Brick {
     fn overlaps(&self, other: &Brick) -> bool {
-        let x_overlap = self.left_x < other.left_x + other.x_width && other.left_x < self.left_x + self.x_width;
-        let y_overlap = self.front_y < other.front_y + other.y_depth && other.front_y < self.front_y + self.y_depth;
-        let z_overlap = self.bottom_z < other.bottom_z + other.z_height && other.bottom_z < self.bottom_z + self.z_height;
-
-        x_overlap && y_overlap && z_overlap
+        let z_overlap = (self.bottom_z >= other.bottom_z && self.bottom_z < (other.bottom_z + other.z_height))
+            || (other.bottom_z >= self.bottom_z && other.bottom_z < (self.bottom_z + self.z_height));
+                println!("z_overlap: {}", z_overlap);
+        self.overlaps_x_y(&other) && z_overlap
     }
     fn overlaps_x_y(&self, other: &Brick) -> bool {
-        self.left_x >= other.left_x && self.left_x + self.x_width <= other.left_x + other.x_width &&
-            self.front_y >= other.front_y && self.front_y + self.y_depth <= other.front_y + other.y_depth
+        let x_overlap = (self.left_x >= other.left_x && self.left_x < (other.left_x + other.x_width))
+            || (other.left_x >= self.left_x && other.left_x < (self.left_x + self.x_width));
+        let y_overlap = (self.front_y >= other.front_y && self.front_y < (other.front_y + other.y_depth))
+            || (other.front_y >= self.front_y && other.front_y < (self.front_y + self.y_depth));
+        x_overlap && y_overlap
     }
+
     fn supports(&self, other: &Brick) -> bool {
         self.overlaps_x_y(other) && self.bottom_z + self.z_height == other.bottom_z
     }
@@ -57,6 +61,7 @@ fn parse_brick(brick_str: &str) -> Brick {
         .collect();
 
     Brick {
+        reference: brick_str.to_string(),
         left_x: coords[0].min(coords[3]),
         front_y: coords[1].min(coords[4]),
         bottom_z: coords[2].min(coords[5]),
@@ -120,7 +125,7 @@ mod tests {
     #[test]
     fn test_parse_brick(){
         let test_brick_str = "2,2,2~2,2,2";
-        let test_brick = Brick{left_x: 2, front_y: 2, bottom_z: 2, x_width: 1, z_height: 1, y_depth: 1};
+        let test_brick = Brick{reference:"2,2,2~2,2,2".to_string(), left_x: 2, front_y: 2, bottom_z: 2, x_width: 1, z_height: 1, y_depth: 1};
         let brick = parse_brick(test_brick_str);
         assert_eq!(brick, test_brick);
     }
@@ -128,7 +133,7 @@ mod tests {
     #[test]
     fn test_parse_brick2(){
         let test_brick_str = "0,0,1~0,0,10";
-        let test_brick = Brick{left_x: 0, front_y: 0, bottom_z: 1, x_width: 1, z_height: 10, y_depth: 1};
+        let test_brick = Brick{reference:"0,0,1~0,0,10".to_string(),left_x: 0, front_y: 0, bottom_z: 1, x_width: 1, z_height: 10, y_depth: 1};
         let brick = parse_brick(test_brick_str);
         assert_eq!(brick, test_brick);
     }
@@ -152,6 +157,7 @@ mod tests {
     #[test]
     fn no_overlap() {
         let brick1 = Brick {
+            reference:"brick1".to_string(),
             left_x: 0,
             front_y: 0,
             bottom_z: 0,
@@ -160,6 +166,7 @@ mod tests {
             y_depth: 2,
         };
         let brick2 = Brick {
+            reference:"brick2".to_string(),
             left_x: 3,
             front_y: 3,
             bottom_z: 3,
@@ -173,6 +180,7 @@ mod tests {
     #[test]
     fn overlap_one_dimension() {
         let brick1 = Brick {
+            reference:"brick1".to_string(),
             left_x: 0,
             front_y: 0,
             bottom_z: 0,
@@ -181,6 +189,7 @@ mod tests {
             y_depth: 2,
         };
         let brick2 = Brick {
+            reference:"brick2".to_string(),
             left_x: 2,
             front_y: 3,
             bottom_z: 3,
@@ -194,6 +203,7 @@ mod tests {
     #[test]
     fn overlap_two_dimensions() {
         let brick1 = Brick {
+            reference:"brick1".to_string(),
             left_x: 0,
             front_y: 0,
             bottom_z: 0,
@@ -202,6 +212,7 @@ mod tests {
             y_depth: 3,
         };
         let brick2 = Brick {
+            reference:"brick2".to_string(),
             left_x: 2,
             front_y: 2,
             bottom_z: 3,
@@ -215,6 +226,7 @@ mod tests {
     #[test]
     fn complete_overlap() {
         let brick1 = Brick {
+            reference:"brick1".to_string(),
             left_x: 1,
             front_y: 1,
             bottom_z: 1,
@@ -223,6 +235,7 @@ mod tests {
             y_depth: 3,
         };
         let brick2 = Brick {
+            reference:"brick2".to_string(),
             left_x: 2,
             front_y: 2,
             bottom_z: 2,
@@ -230,11 +243,14 @@ mod tests {
             z_height: 1,
             y_depth: 1,
         };
+        println!("brick1: {:?}", brick1);
+        println!("brick2: {:?}", brick2);
         assert!(brick1.overlaps(&brick2));
     }
     #[test]
     fn brick_2_lands_on_brick_1() {
         let brick1 = Brick {
+            reference:"brick1".to_string(),
             left_x: 1,
             front_y: 1,
             bottom_z: 1,
@@ -243,6 +259,7 @@ mod tests {
             y_depth: 3,
         };
         let brick2 = Brick {
+            reference:"brick2".to_string(),
             left_x: 2,
             front_y: 2,
             bottom_z: 9,
@@ -251,9 +268,10 @@ mod tests {
             y_depth: 1,
         };
         let bricks = vec![brick2, brick1];
-        let mut fallen = simulate_fall(bricks);
-        let f_brick1 = fallen.pop_first().unwrap();
-        let f_brick2 = fallen.pop_first().unwrap();
+        let fallen = simulate_fall(bricks);
+        // find "brick1" in fallen
+        let f_brick1 = fallen.iter().find(|b| b.reference == "brick1").unwrap();
+        let f_brick2 = fallen.iter().find(|b| b.reference == "brick2").unwrap();
         assert_eq!(f_brick1.bottom_z, 1);
         assert_eq!(f_brick2.bottom_z, 4);
 
@@ -262,6 +280,7 @@ mod tests {
     #[test]
     fn brick_2_lands_next_to_brick_1() {
         let brick1 = Brick {
+            reference:"brick1".to_string(),
             left_x: 1,
             front_y: 1,
             bottom_z: 1,
@@ -270,6 +289,7 @@ mod tests {
             y_depth: 3,
         };
         let brick2 = Brick {
+            reference:"brick2".to_string(),
             left_x: 4,
             front_y: 2,
             bottom_z: 9,
@@ -297,9 +317,101 @@ mod tests {
             let brick = parse_brick(&line);
             bricks.push(brick);
         }
+        println!("A: {:?}", bricks[0]);
+        println!("B: {:?}", bricks[1]);
+        println!("C: {:?}", bricks[2]);
+        assert!(bricks[0].overlaps_x_y(&bricks[1]));
+        assert!(!bricks[1].overlaps_x_y(&bricks[2]));
+
+
         let fallen = simulate_fall(bricks);
         assert_eq!(fallen.len(), 7);
+        let brick_a = fallen.iter().find(|b| b.reference == "1,0,1~1,2,1").unwrap();
+        let brick_b = fallen.iter().find(|b| b.reference == "0,0,2~2,0,2").unwrap();
+        let brick_c = fallen.iter().find(|b| b.reference == "0,2,3~2,2,3").unwrap();
+        println!("a: {:?}", brick_a);
+        println!("b: {:?}", brick_b);
+        println!("c: {:?}", brick_c);
+        assert!(brick_a.overlaps_x_y(&brick_b));
+        assert!(brick_a.supports(&brick_b));
     }
 
+    #[test]
+    fn test_overlaps_x_y(){
+        let brick1 = Brick {
+            reference:"brick1".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+        let brick2 = Brick {
+            reference:"brick2".to_string(),
+            left_x: 0,
+            front_y: 0,
+            bottom_z: 2,
+            x_width: 3,
+            z_height: 1,
+            y_depth: 1,
+        };
+        println!("brick1: {:?}", brick1);
+        println!("brick2: {:?}", brick2);
+        assert!(brick1.overlaps_x_y(&brick2));
+    }
+    #[test]
+    fn test_a_supports_b(){
+        let brickA = Brick {
+            reference:"brickA".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+        let brickB = Brick {
+            reference:"brickB".to_string(),
+            left_x: 0,
+            front_y: 0,
+            bottom_z: 2,
+            x_width: 3,
+            z_height: 1,
+            y_depth: 1,
+        };
+        println!("brick1: {:?}", brickA);
+        println!("brick2: {:?}", brickB);
+        assert!(brickA.supports(&brickB));
+    }
+
+    #[test]
+    fn test_b_falls_on_a(){
+        let brickA = Brick {
+            reference:"brickA".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+        let brickB = Brick {
+            reference:"brickB".to_string(),
+            left_x: 0,
+            front_y: 0,
+            bottom_z: 2,
+            x_width: 3,
+            z_height: 1,
+            y_depth: 1,
+        };
+        println!("brick1: {:?}", brickA);
+        println!("brick2: {:?}", brickB);
+        let mut fallen = BTreeSet::new();
+        fallen.insert(brickA.clone());
+        let fallen_b = find_fall_position(&brickB, &fallen);
+
+        assert!(brickA.supports(&fallen_b));
+    }
 
 }
