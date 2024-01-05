@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -83,7 +83,7 @@ fn add_brick(set: &mut HashSet<Brick>, new_brick: Brick) -> bool {
     true
 }
 
-fn simulate_fall(mut bricks: Vec<Brick>) -> BTreeSet<Brick>{
+fn simulate_fall(bricks: Vec<Brick>) -> BTreeSet<Brick>{
     let mut yet_to_fall: BTreeSet<Brick> = bricks.into_iter().collect(); // all bricks start here
     let mut fallen: BTreeSet<Brick> = BTreeSet::new(); // no bricks have fallen initially
 
@@ -100,7 +100,7 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
         return brick.clone(); // The brick is already on the ground
     }
 
-    // Start from just above the ground or where it currently is
+
     let mut highest_supported_z = 1;
 
     // Check against each fallen brick to find the highest position it can fall to
@@ -108,7 +108,7 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
         if brick.overlaps_x_y(fallen_brick) {
             // Calculate the potential new z position (just above the fallen brick)
             let potential_new_z = fallen_brick.bottom_z + fallen_brick.z_height;
-            if potential_new_z < brick.bottom_z && potential_new_z > highest_supported_z {
+            if potential_new_z <= brick.bottom_z && potential_new_z > highest_supported_z {
                 highest_supported_z = potential_new_z;
             }
         }
@@ -118,6 +118,91 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
     new_position.bottom_z = highest_supported_z;
     new_position
 }
+
+fn remove_safe_bricks(mut fallen: BTreeSet<Brick>) -> Vec<Brick> {
+    let mut safe_to_remove: Vec<Brick> = Vec::new();
+
+// build a graph of all bricks that support each brick
+
+    let (mut support_graph, mut supported_by_graph) = build_support_graphs(&fallen);
+
+    // loop until there are no safe to remove bricks
+    loop {
+        let mut removed = false;
+        for brick in fallen.iter() {
+            if is_safe_to_remove(brick, &support_graph, &supported_by_graph) {
+                safe_to_remove.push(brick.clone());
+                // remove brick from support_graph and supported_by_graph
+                support_graph.remove(brick);
+                if let Some(supported_bricks) = support_graph.get(brick) {
+                    for supported_brick in supported_bricks {
+                        // Get the supporters of the currently supported brick
+                        if let Some(supporters) = supported_by_graph.get_mut(supported_brick) {
+                            // Remove the brick from its supporters
+                            supporters.retain(|supporter| supporter != brick); // Retain only supporters that are not the brick
+                        }
+                    }
+                }
+                removed = true;
+            }
+        }
+        // retain only bricks that are not in safe_to_remove
+        fallen.retain(|brick| !safe_to_remove.contains(brick));
+        if !removed {
+            break;
+        }
+    }
+
+    safe_to_remove
+
+}
+
+fn build_support_graphs(fallen: &BTreeSet<Brick>) -> (HashMap<Brick, Vec<Brick>>, HashMap<Brick, Vec<Brick>>) {
+    let support_graph: HashMap<Brick, Vec<Brick>> = fallen.iter()
+        .map(|b| {
+            let supported_by: Vec<Brick> = fallen.iter()
+                .filter(|b2| b2.supports(b))
+                .cloned()
+                .collect();
+            (b.clone(), supported_by)
+        })
+        .collect();
+
+    let mut supported_by_graph: HashMap<Brick, Vec<Brick>> = HashMap::new();
+    // build a graph of all bricks that are supported by each brick
+    for (brick, supported_by) in support_graph.iter() {
+        for supported_brick in supported_by.iter() {
+            let supported_by_list = supported_by_graph.entry(supported_brick.clone()).or_insert(Vec::new());
+            supported_by_list.push(brick.clone());
+        }
+    }
+    (support_graph, supported_by_graph)
+}
+
+fn is_safe_to_remove(brick: &Brick,
+                     support_graph: &HashMap<Brick, Vec<Brick>>,
+                     supported_by_graph: &HashMap<Brick, Vec<Brick>>) -> bool {
+
+    // Get the bricks that the current brick supports
+    if let Some(supported_bricks) = support_graph.get(brick) {
+        for supported_brick in supported_bricks {
+            // Check if the supported brick has other supports
+            if let Some(supporters) = supported_by_graph.get(supported_brick) {
+                // If the only supporter of the supported brick is the current brick, it's not safe to remove
+                if supporters.len() == 1 && supporters.contains(brick) {
+                    return false;
+                }
+            } else {
+                // If there are no other supporters for a supported brick, it's not safe to remove
+                return false;
+            }
+        }
+    }
+    // If all supported bricks have other supporters, it's safe to remove
+    true
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -362,8 +447,8 @@ mod tests {
     }
     #[test]
     fn test_a_supports_b(){
-        let brickA = Brick {
-            reference:"brickA".to_string(),
+        let brick_a = Brick {
+            reference:"brick_a".to_string(),
             left_x: 1,
             front_y: 0,
             bottom_z: 1,
@@ -371,8 +456,8 @@ mod tests {
             z_height: 1,
             y_depth: 3,
         };
-        let brickB = Brick {
-            reference:"brickB".to_string(),
+        let brick_b = Brick {
+            reference:"brick_b".to_string(),
             left_x: 0,
             front_y: 0,
             bottom_z: 2,
@@ -380,15 +465,15 @@ mod tests {
             z_height: 1,
             y_depth: 1,
         };
-        println!("brick1: {:?}", brickA);
-        println!("brick2: {:?}", brickB);
-        assert!(brickA.supports(&brickB));
+        println!("brick1: {:?}", brick_a);
+        println!("brick2: {:?}", brick_b);
+        assert!(brick_a.supports(&brick_b));
     }
 
     #[test]
     fn test_b_falls_on_a(){
-        let brickA = Brick {
-            reference:"brickA".to_string(),
+        let brick_a = Brick {
+            reference:"brick_a".to_string(),
             left_x: 1,
             front_y: 0,
             bottom_z: 1,
@@ -396,8 +481,8 @@ mod tests {
             z_height: 1,
             y_depth: 3,
         };
-        let brickB = Brick {
-            reference:"brickB".to_string(),
+        let brick_b = Brick {
+            reference:"brick_b".to_string(),
             left_x: 0,
             front_y: 0,
             bottom_z: 2,
@@ -405,13 +490,58 @@ mod tests {
             z_height: 1,
             y_depth: 1,
         };
-        println!("brick1: {:?}", brickA);
-        println!("brick2: {:?}", brickB);
+        println!("brick1: {:?}", brick_a);
+        println!("brick2: {:?}", brick_b);
         let mut fallen = BTreeSet::new();
-        fallen.insert(brickA.clone());
-        let fallen_b = find_fall_position(&brickB, &fallen);
+        fallen.insert(brick_a.clone());
+        let fallen_b = find_fall_position(&brick_b, &fallen);
 
-        assert!(brickA.supports(&fallen_b));
+        assert!(brick_a.supports(&fallen_b));
     }
 
+    #[test]
+    fn test_is_safe_to_remove() {
+        let brick_a = Brick {
+            reference: "brick_a".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+        let brick_b = Brick {
+            reference: "brick_b".to_string(),
+            left_x: 0,
+            front_y: 0,
+            bottom_z: 2,
+            x_width: 3,
+            z_height: 1,
+            y_depth: 1,
+        };
+
+        let brick_c = Brick {
+            reference: "brick_c".to_string(),
+            left_x: 3,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+        println!("brick_a: {:?}", brick_a);
+        println!("brick_b: {:?}", brick_b);
+        println!("brick_c: {:?}", brick_c);
+        let mut fallen = BTreeSet::new();
+        fallen.insert(brick_a.clone());
+        fallen.insert(brick_b.clone());
+        fallen.insert(brick_c.clone());
+        let (support_graph, supported_by_graph) = build_support_graphs(&fallen);
+
+        assert!(is_safe_to_remove(&brick_a, &support_graph, &supported_by_graph));
+        assert!(is_safe_to_remove(&brick_c, &support_graph, &supported_by_graph));
+
+        let removed = remove_safe_bricks(fallen);
+        assert_eq!(removed.len(), 2);
+    }
 }
