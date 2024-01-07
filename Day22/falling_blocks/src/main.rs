@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 
 fn main() {
 
-    let filename = "test.txt";
+    let filename = "bricks.txt";
     let file = File::open(filename).expect("file not found");
     let reader = BufReader::new(file);
     let mut bricks: Vec<Brick> = Vec::new();
@@ -17,12 +17,15 @@ fn main() {
     let fallen = simulate_fall(bricks);
     println!("Fallen: {}", fallen.len());
     let safe_to_remove = count_save_to_remove(&fallen);
-    let removable = remove_safe_bricks(fallen);
+    let removable = remove_safe_bricks(&fallen);
     // print removable bricks
     for brick in removable.iter() {
         println!("Removable: {:?}", brick);
     }
     println!("Safe to remove: {}, removable: {}", safe_to_remove, removable.len());
+
+    let total_disintegrated = find_total_chain_reaction(&fallen);
+    println!("Total disintegrated: {}", total_disintegrated);
 }
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone)]
@@ -138,9 +141,9 @@ fn find_fall_position(brick: &Brick, fallen: &BTreeSet<Brick>) -> Brick {
     new_position
 }
 
-fn remove_safe_bricks(mut fallen: BTreeSet<Brick>) -> Vec<Brick> {
+fn remove_safe_bricks(fallen: &BTreeSet<Brick>) -> Vec<Brick> {
     let mut safe_to_remove: Vec<Brick> = Vec::new();
-
+    let mut retainable: BTreeSet<Brick> = fallen.iter().cloned().collect();
 // build a graph of all bricks that support each brick
 
     let (mut support_graph, mut supported_by_graph) = build_support_graphs(&fallen);
@@ -148,8 +151,8 @@ fn remove_safe_bricks(mut fallen: BTreeSet<Brick>) -> Vec<Brick> {
     // loop until there are no safe to remove bricks
     loop {
         let mut removed = false;
-        for brick in fallen.iter() {
-            if is_safe_to_remove(brick, &support_graph, &supported_by_graph) {
+        for brick in retainable.iter() {
+            if is_safe_to_remove(brick, &support_graph, &supported_by_graph)  {
                 safe_to_remove.push(brick.clone());
                 // remove brick from support_graph and supported_by_graph
                 support_graph.remove(brick);
@@ -166,7 +169,7 @@ fn remove_safe_bricks(mut fallen: BTreeSet<Brick>) -> Vec<Brick> {
             }
         }
         // retain only bricks that are not in safe_to_remove
-        fallen.retain(|brick| !safe_to_remove.contains(brick));
+        retainable.retain(|brick| !safe_to_remove.contains(brick));
         if !removed {
             break;
         }
@@ -187,31 +190,31 @@ fn count_save_to_remove(fallen: &BTreeSet<Brick>) -> usize {
     safe_to_remove
 }
 
-fn build_support_graphs(fallen: &BTreeSet<Brick>) -> (HashMap<Brick, Vec<Brick>>, HashMap<Brick, Vec<Brick>>) {
-    let mut support_graph: HashMap<Brick, Vec<Brick>> = HashMap::new();
+fn build_support_graphs(fallen: &BTreeSet<Brick>) -> (HashMap<Brick, HashSet<Brick>>, HashMap<Brick, HashSet<Brick>>) {
+    let mut support_graph: HashMap<Brick, HashSet<Brick>> = HashMap::new();
     for brick in fallen.iter() {
         for supported_brick in fallen.iter() {
             if brick.supports(supported_brick) {
-                let supported_list = support_graph.entry(brick.clone()).or_insert(Vec::new());
-                supported_list.push(supported_brick.clone());
+                let supported_list = support_graph.entry(brick.clone()).or_insert(HashSet::new());
+                supported_list.insert(supported_brick.clone());
             }
         }
     }
 
-    let mut supported_by_graph: HashMap<Brick, Vec<Brick>> = HashMap::new();
+    let mut supported_by_graph: HashMap<Brick, HashSet<Brick>> = HashMap::new();
     // build a graph of all bricks that are supported by each brick
     for (brick, supported_by) in support_graph.iter() {
         for supported_brick in supported_by.iter() {
-            let supported_by_list = supported_by_graph.entry(supported_brick.clone()).or_insert(Vec::new());
-            supported_by_list.push(brick.clone());
+            let supported_by_list = supported_by_graph.entry(supported_brick.clone()).or_insert(HashSet::new());
+            supported_by_list.insert(brick.clone());
         }
     }
     (support_graph, supported_by_graph)
 }
 
 fn is_safe_to_remove(brick: &Brick,
-                     support_graph: &HashMap<Brick, Vec<Brick>>,
-                     supported_by_graph: &HashMap<Brick, Vec<Brick>>) -> bool {
+                     support_graph: &HashMap<Brick, HashSet<Brick>>,
+                     supported_by_graph: &HashMap<Brick, HashSet<Brick>>) -> bool {
 
     // Get the bricks that the current brick supports
     if let Some(supported_bricks) = support_graph.get(brick) {
@@ -232,7 +235,44 @@ fn is_safe_to_remove(brick: &Brick,
     true
 }
 
+fn chain_reaction(first_brick:bool, start_brick: &Brick, disintegrated: &mut HashSet<Brick>, support_graph: &HashMap<Brick, HashSet<Brick>>, supported_by_graph: &HashMap<Brick, HashSet<Brick>>) -> usize {
+    let mut disintegrated_bricks = 0;
+    if disintegrated.contains(start_brick) {
+        return 0;
+    }
+    // Create a longer-lived empty HashSet for cases where there are no supporters
+    let empty_set = HashSet::new();
 
+    // Get the supporters of this brick, or use the empty set if there are none
+    let this_bricks_supporters = supported_by_graph.get(start_brick).unwrap_or(&empty_set);
+
+    // Check if all supporters have disintegrated or there are no supporters
+    if this_bricks_supporters.is_empty() || this_bricks_supporters.iter().all(|supporter| disintegrated.contains(supporter)|| first_brick) {
+        // Disintegrate this brick
+        disintegrated.insert(start_brick.clone());
+        if !first_brick{
+            disintegrated_bricks += 1;
+        }
+        // Recurse for all bricks that this brick supports
+        if let Some(supported_bricks) = support_graph.get(start_brick) {
+            for supported_brick in supported_bricks {
+                disintegrated_bricks += chain_reaction(false, supported_brick, disintegrated, support_graph, supported_by_graph);
+            }
+        }
+
+    }
+    disintegrated_bricks
+}
+
+fn find_total_chain_reaction(fallen: &BTreeSet<Brick>) -> usize {
+    let (support_graph, supported_by_graph) = build_support_graphs(&fallen);
+    let mut total_disintegrated = 0;
+    for brick in fallen.iter() {
+        let mut disintegrated = HashSet::new();
+        total_disintegrated += chain_reaction(true, brick, &mut disintegrated, &support_graph, &supported_by_graph);
+    }
+    total_disintegrated
+}
 
 #[cfg(test)]
 mod tests {
@@ -469,14 +509,11 @@ mod tests {
             bricks.push(brick);
         }
 
-        let mut fallen = simulate_fall(bricks);
+        let fallen = simulate_fall(bricks);
         let brick_a = fallen.iter().find(|b| b.reference == "1,0,1~1,2,1").unwrap();
         let brick_b = fallen.iter().find(|b| b.reference == "0,0,2~2,0,2").unwrap();
         let brick_c = fallen.iter().find(|b| b.reference == "0,2,3~2,2,3").unwrap();
-        let brick_d = fallen.iter().find(|b| b.reference == "0,0,4~0,2,4").unwrap();
-        let brick_e = fallen.iter().find(|b| b.reference == "2,0,5~2,2,5").unwrap();
-        let brick_f = fallen.iter().find(|b| b.reference == "0,1,6~2,1,6").unwrap();
-        let brick_g = fallen.iter().find(|b| b.reference == "1,1,8~1,1,9").unwrap();
+
 
 
         let (support_graph, supported_by_graph) = build_support_graphs(&fallen);
@@ -587,7 +624,7 @@ mod tests {
         };
         let brick_b = Brick {
             reference: "brick_b".to_string(),
-            left_x: 0,
+            left_x: 1,
             front_y: 0,
             bottom_z: 2,
             x_width: 3,
@@ -616,7 +653,135 @@ mod tests {
         assert!(is_safe_to_remove(&brick_a, &support_graph, &supported_by_graph));
         assert!(is_safe_to_remove(&brick_c, &support_graph, &supported_by_graph));
 
-        let removed = remove_safe_bricks(fallen);
-        assert_eq!(removed.len(), 2);
+        let removed = remove_safe_bricks(&fallen);
+        assert_eq!(removed.len(), 3);
     }
+
+    #[test]
+    fn test_chain_reaction() {
+        let brick_a = Brick {
+            reference: "brick_a".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+        let brick_b = Brick {
+            reference: "brick_b".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 2,
+            x_width: 3,
+            z_height: 1,
+            y_depth: 1,
+        };
+
+        let brick_c = Brick {
+            reference: "brick_c".to_string(),
+            left_x: 3,
+            front_y: 0,
+            bottom_z: 1,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+
+        let brick_d = Brick {
+            reference: "brick_d".to_string(),
+            left_x: 2,
+            front_y: 2,
+            bottom_z: 2,
+            x_width: 3,
+            z_height: 1,
+            y_depth: 1,
+        };
+
+        let brick_e = Brick {
+            reference: "brick_e".to_string(),
+            left_x: 1,
+            front_y: 0,
+            bottom_z: 3,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+
+        let brick_f = Brick {
+            reference: "brick_f".to_string(),
+            left_x: 4,
+            front_y: 0,
+            bottom_z: 3,
+            x_width: 1,
+            z_height: 1,
+            y_depth: 3,
+        };
+
+
+        let mut fallen = BTreeSet::new();
+        fallen.insert(brick_a.clone());
+        fallen.insert(brick_b.clone());
+        fallen.insert(brick_c.clone());
+        fallen.insert(brick_d.clone());
+        fallen.insert(brick_e.clone());
+        fallen.insert(brick_f.clone());
+        let (support_graph, supported_by_graph) = build_support_graphs(&fallen);
+
+        let mut disintegrated_c =  HashSet::new();
+        let mut disintegrated_a = HashSet::new();
+        assert_eq!(chain_reaction(true, &brick_c, & mut disintegrated_c, &support_graph, &supported_by_graph), 2);
+        assert_eq!(chain_reaction(true, &brick_a, & mut disintegrated_a, &support_graph, &supported_by_graph), 0);
+    }
+
+    #[test]
+    fn test_chain_reaction_from_example() {
+
+        // load bricks from file
+        let filename = "test.txt";
+        let file = File::open(filename).expect("file not found");
+        let reader = BufReader::new(file);
+        let mut bricks: Vec<Brick> = Vec::new();
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let brick = parse_brick(&line);
+            bricks.push(brick);
+        }
+
+        let fallen = simulate_fall(bricks);
+        let brick_a = fallen.iter().find(|b| b.reference == "1,0,1~1,2,1").unwrap();
+        let brick_b = fallen.iter().find(|b| b.reference == "0,0,2~2,0,2").unwrap();
+        let brick_c = fallen.iter().find(|b| b.reference == "0,2,3~2,2,3").unwrap();
+
+
+        let (support_graph, supported_by_graph) = build_support_graphs(&fallen);
+
+        let brick_a = fallen.iter().find(|b| b.reference == "1,0,1~1,2,1").unwrap();
+        let brick_f = fallen.iter().find(|b| b.reference == "0,1,6~2,1,6").unwrap();
+        let mut disintegrated_by_a: HashSet<Brick> = HashSet::new();
+        let mut disintegrated_by_f: HashSet<Brick> = HashSet::new();
+        chain_reaction(true, &brick_a, &mut disintegrated_by_a, &support_graph, &supported_by_graph);
+        assert_eq!(disintegrated_by_a.len()-1, 6);
+        chain_reaction(true, &brick_f, &mut disintegrated_by_f, &support_graph, &supported_by_graph);
+        assert_eq!(disintegrated_by_f.len()-1, 1);
+        assert_eq!(chain_reaction(true, &brick_c, &mut HashSet::new(), &support_graph, &supported_by_graph), 0);
+    }
+    #[test]
+    fn test_find_total_chain_reaction(){
+        let filename = "test.txt";
+        let file = File::open(filename).expect("file not found");
+        let reader = BufReader::new(file);
+        let mut bricks: Vec<Brick> = Vec::new();
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let brick = parse_brick(&line);
+            bricks.push(brick);
+        }
+        let fallen = simulate_fall(bricks);
+        let total_disintegrated = find_total_chain_reaction(&fallen);
+        assert_eq!(total_disintegrated, 7);
+
+    }
+
+
 }
