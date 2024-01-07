@@ -3,7 +3,26 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() {
-    println!("Hello, world!");
+
+    let filename = "test.txt";
+    let file = File::open(filename).expect("file not found");
+    let reader = BufReader::new(file);
+    let mut bricks: Vec<Brick> = Vec::new();
+    for line in reader.lines() {
+        let line = line.unwrap();
+        let brick = parse_brick(&line);
+        bricks.push(brick);
+    }
+    println!("Bricks: {}", bricks.len());
+    let fallen = simulate_fall(bricks);
+    println!("Fallen: {}", fallen.len());
+    let safe_to_remove = count_save_to_remove(&fallen);
+    let removable = remove_safe_bricks(fallen);
+    // print removable bricks
+    for brick in removable.iter() {
+        println!("Removable: {:?}", brick);
+    }
+    println!("Safe to remove: {}, removable: {}", safe_to_remove, removable.len());
 }
 
 #[derive(Eq, PartialEq, Hash, Debug, Clone)]
@@ -157,16 +176,27 @@ fn remove_safe_bricks(mut fallen: BTreeSet<Brick>) -> Vec<Brick> {
 
 }
 
+fn count_save_to_remove(fallen: &BTreeSet<Brick>) -> usize {
+    let (support_graph, supported_by_graph) = build_support_graphs(fallen);
+    let mut safe_to_remove = 0;
+    for brick in fallen.iter() {
+        if is_safe_to_remove(brick, &support_graph, &supported_by_graph) {
+            safe_to_remove += 1;
+        }
+    }
+    safe_to_remove
+}
+
 fn build_support_graphs(fallen: &BTreeSet<Brick>) -> (HashMap<Brick, Vec<Brick>>, HashMap<Brick, Vec<Brick>>) {
-    let support_graph: HashMap<Brick, Vec<Brick>> = fallen.iter()
-        .map(|b| {
-            let supported_by: Vec<Brick> = fallen.iter()
-                .filter(|b2| b2.supports(b))
-                .cloned()
-                .collect();
-            (b.clone(), supported_by)
-        })
-        .collect();
+    let mut support_graph: HashMap<Brick, Vec<Brick>> = HashMap::new();
+    for brick in fallen.iter() {
+        for supported_brick in fallen.iter() {
+            if brick.supports(supported_brick) {
+                let supported_list = support_graph.entry(brick.clone()).or_insert(Vec::new());
+                supported_list.push(supported_brick.clone());
+            }
+        }
+    }
 
     let mut supported_by_graph: HashMap<Brick, Vec<Brick>> = HashMap::new();
     // build a graph of all bricks that are supported by each brick
@@ -419,6 +449,51 @@ mod tests {
         println!("c: {:?}", brick_c);
         assert!(brick_a.overlaps_x_y(&brick_b));
         assert!(brick_a.supports(&brick_b));
+        assert!(brick_a.supports(&brick_c));
+        let safe_to_remove = count_save_to_remove(&fallen);
+        assert_eq!(safe_to_remove, 5);
+    }
+
+
+    #[test]
+    fn test_safe_to_remove(){
+
+    // load bricks from file
+        let filename = "test.txt";
+        let file = File::open(filename).expect("file not found");
+        let reader = BufReader::new(file);
+        let mut bricks: Vec<Brick> = Vec::new();
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let brick = parse_brick(&line);
+            bricks.push(brick);
+        }
+
+        let mut fallen = simulate_fall(bricks);
+        let brick_a = fallen.iter().find(|b| b.reference == "1,0,1~1,2,1").unwrap();
+        let brick_b = fallen.iter().find(|b| b.reference == "0,0,2~2,0,2").unwrap();
+        let brick_c = fallen.iter().find(|b| b.reference == "0,2,3~2,2,3").unwrap();
+        let brick_d = fallen.iter().find(|b| b.reference == "0,0,4~0,2,4").unwrap();
+        let brick_e = fallen.iter().find(|b| b.reference == "2,0,5~2,2,5").unwrap();
+        let brick_f = fallen.iter().find(|b| b.reference == "0,1,6~2,1,6").unwrap();
+        let brick_g = fallen.iter().find(|b| b.reference == "1,1,8~1,1,9").unwrap();
+
+
+        let (support_graph, supported_by_graph) = build_support_graphs(&fallen);
+        println!("Brick A: {:?}", brick_a);
+        println!("Brick B: {:?}", brick_b);
+        println!("Brick C: {:?}", brick_c);
+        assert!(brick_a.supports(&brick_b));
+        assert!(brick_a.supports(&brick_c));
+        let supported_by_brick_a = support_graph.get(brick_a).unwrap();
+        assert_eq!(supported_by_brick_a.len(), 2);
+        assert!(supported_by_brick_a.contains(&brick_b));
+        assert!(supported_by_brick_a.contains(&brick_c));
+        let supporters_of_brick_b = supported_by_graph.get(brick_b).unwrap();
+        assert_eq!(supporters_of_brick_b.len(), 1);
+        assert!(supporters_of_brick_b.contains(&brick_a));
+        //assert!(!is_safe_to_remove(&brick_a, &support_graph, &supported_by_graph));
+
     }
 
     #[test]
