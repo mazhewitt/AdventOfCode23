@@ -18,7 +18,29 @@ enum Pulse {
     High,
     Low,
 }
+impl ModuleType {
+    // Method to handle receiving a pulse
+    pub fn receive_pulse(&mut self, pulse: Pulse) -> Vec<(NodeIndex, Pulse)> {
+        // Initialize an empty vector to collect any outbound pulses
+        let mut outbound_pulses = Vec::new();
 
+        match self {
+            ModuleType::FlipFlop(state) => {
+                // Handle flip-flop logic
+            },
+            ModuleType::Conjunction(receive_node_map) => {
+                // Handle conjunction logic
+            },
+
+            ModuleType::Broadcaster => {
+                // Handle broadcaster logic
+            },
+
+        }
+
+        outbound_pulses // Return any generated outbound pulses
+    }
+}
 fn simulate_pulse(graph: &mut DiGraph<ModuleType, ()>, start_node: NodeIndex, pulse: Pulse) {
 
 }
@@ -87,5 +109,38 @@ mod tests {
         // Verify that the graph has the correct number of nodes and edges
         assert_eq!(graph.node_count(), 5, "Graph does not contain 5 nodes.");
         assert_eq!(graph.edge_count(), 7, "Graph does not contain 7 edges.");
+
+        println!("{:?}", graph);
     }
+
+
+    #[test]
+    fn flip_flop_receives_high_pulse() {
+        let mut flip_flop = ModuleType::FlipFlop(false);
+        let outbound_pulses = flip_flop.receive_pulse(Pulse::High);
+        assert_eq!(outbound_pulses.len(), 0, "Flip-flop should not generate any outbound pulses when receiving a high pulse.");
+        assert_eq!(flip_flop, ModuleType::FlipFlop(false), "Flip-flop should be off after receiving a high pulse.");
+        let mut flip_flop2 = ModuleType::FlipFlop(true);
+        let outbound_pulses = flip_flop2.receive_pulse(Pulse::High);
+        assert_eq!(outbound_pulses.len(), 0, "Flip-flop should not generate any outbound pulses when receiving a high pulse.");
+        assert_eq!(flip_flop2, ModuleType::FlipFlop(true), "Flip-flop should be off after receiving a high pulse.");
+
+    }
+
+    #[test]
+    fn flip_flop_receives_low_pulse() {
+        let mut flip_flop = ModuleType::FlipFlop(false);
+        let outbound_pulses = flip_flop.receive_pulse(Pulse::Low);
+        assert_eq!(outbound_pulses.len(), 1, "Off Flip-flop should generate a high pulse when receiving a low pulse.");
+        assert_eq!(flip_flop, ModuleType::FlipFlop(true), "Off Flip-flop should be on after receiving a high pulse.");
+        assert_eq!(outbound_pulses[0], (NodeIndex::new(0), Pulse::High), "Off flip-flop should generate a high pulse when receiving a low pulse.");
+
+        let mut flip_flop2 = ModuleType::FlipFlop(true);
+        let outbound_pulses = flip_flop2.receive_pulse(Pulse::Low);
+        assert_eq!(outbound_pulses.len(), 1, "On Flip-flop should generate a low pulse when receiving a low pulse.");
+        assert_eq!(flip_flop2, ModuleType::FlipFlop(false), "Flip-flop should be off after receiving a low pulse.");
+        assert_eq!(outbound_pulses[0], (NodeIndex::new(0), Pulse::Low), "On flip-flop should generate a low pulse when receiving a low pulse.");
+
+    }
+
 }
